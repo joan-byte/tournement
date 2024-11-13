@@ -122,16 +122,17 @@ const formatearFecha = (dateString: string) => {
   })
 }
 
-const seleccionarCampeonato = (campeonato: Campeonato) => {
-  campeonatoStore.setCurrentCampeonato(campeonato)
-  if (campeonato.partida_actual === 0) {
-    router.push('/partidas/inicio')
-  } else {
-    router.push('/partidas/registro')
+const seleccionarCampeonato = async (campeonato: Campeonato) => {
+  try {
+    campeonatoStore.setCampeonatoActual(campeonato)
+    router.push('/parejas')
+  } catch (error) {
+    console.error('Error al seleccionar campeonato:', error)
   }
 }
 
 const onCampeonatoCreated = async () => {
+  showNewCampeonatoModal.value = false
   await loadCampeonatos()
 }
 </script> 

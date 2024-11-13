@@ -50,6 +50,7 @@ declare module '@/stores/campeonato' {
     campeonatos: import('@/types').Campeonato[]
     getCurrentCampeonato: () => import('@/types').Campeonato | null
     fetchCampeonatos: () => Promise<import('@/types').Campeonato[]>
+    createCampeonato: (data: Partial<import('@/types').Campeonato>) => Promise<import('@/types').Campeonato>
     updateCampeonato: (id: number, data: Partial<import('@/types').Campeonato>) => Promise<import('@/types').Campeonato>
     setCampeonatoActual: (campeonato: import('@/types').Campeonato | null) => void
     loadCampeonatoActual: () => Promise<void>
@@ -59,6 +60,7 @@ declare module '@/stores/campeonato' {
 declare module '@/stores/pareja' {
   export function useParejaStore(): {
     fetchParejasCampeonato: (id: number) => Promise<import('@/types').Pareja[]>
+    createPareja: (data: any) => Promise<import('@/types').Pareja>
     toggleParejaEstado: (id: number, estado: boolean) => Promise<void>
     fetchJugadoresPareja: (id: number) => Promise<any[]>
     updatePareja: (id: number, data: any) => Promise<void>

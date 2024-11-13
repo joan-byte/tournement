@@ -38,8 +38,8 @@
         <div v-else-if="!campeonatoActual" class="text-center py-4 text-gray-500">
           Seleccione un campeonato para ver las parejas
         </div>
-        <div v-else-if="parejas.length === 0" class="text-center py-4 text-gray-500">
-          {{ error || 'No hay parejas registradas' }}
+        <div v-else-if="!parejasOrdenadas.length" class="text-center py-4 text-gray-500">
+          No hay parejas registradas
         </div>
         <ul v-else role="list" class="divide-y divide-gray-200">
           <li
@@ -143,6 +143,7 @@ const loadParejas = async () => {
     isLoading.value = true
     if (campeonatoActual.value) {
       const response = await parejaStore.fetchParejasCampeonato(campeonatoActual.value.id)
+      console.log('Parejas cargadas:', response)  // Añadir este log
       parejas.value = Array.isArray(response) ? response : []
     }
   } catch (e) {
@@ -155,6 +156,7 @@ const loadParejas = async () => {
 }
 
 const parejasOrdenadas = computed(() => {
+  console.log('Calculando parejas ordenadas:', parejas.value)  // Añadir este log
   if (!Array.isArray(parejas.value)) return []
   return [...parejas.value]
     .filter(p => p && typeof p.numero === 'number')

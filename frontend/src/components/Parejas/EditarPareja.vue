@@ -191,7 +191,9 @@ const nombrePareja = computed(() => {
 onMounted(async () => {
   try {
     const jugadores = await parejaStore.fetchJugadoresPareja(props.pareja.id)
-    if (jugadores && jugadores.length >= 2) {
+    console.log('Jugadores cargados:', jugadores)  // Para depuración
+    
+    if (jugadores && Array.isArray(jugadores) && jugadores.length === 2) {
       formData.value = {
         club: props.pareja.club || '',
         jugador1: {
@@ -203,6 +205,9 @@ onMounted(async () => {
           apellido: jugadores[1].apellido
         }
       }
+      console.log('FormData actualizado:', formData.value)  // Para depuración
+    } else {
+      console.error('Formato de jugadores incorrecto:', jugadores)
     }
   } catch (error) {
     console.error('Error al cargar jugadores:', error)

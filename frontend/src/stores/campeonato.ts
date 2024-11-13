@@ -24,6 +24,17 @@ export const useCampeonatoStore = defineStore('campeonato', {
       }
     },
 
+    async createCampeonato(campeonatoData: Partial<Campeonato>) {
+      try {
+        const response = await axios.post('/api/campeonatos', campeonatoData)
+        this.campeonatos.push(response.data)
+        return response.data
+      } catch (error) {
+        console.error('Error creating campeonato:', error)
+        throw error
+      }
+    },
+
     async updateCampeonato(id: number, data: Partial<Campeonato>) {
       try {
         const response = await axios.put(`/api/campeonatos/${id}`, data)

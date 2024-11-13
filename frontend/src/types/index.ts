@@ -10,10 +10,10 @@ export interface Campeonato {
 
 export interface Pareja {
   id: number;
-  numero: number;
   nombre: string;
   club?: string;
   activa: boolean;
+  numero?: number;
   campeonato_id: number;
 }
 
@@ -80,4 +80,12 @@ export interface RankingFinal {
   GB_final: string;
   posicion_final: number;
   premio?: string;
+}
+
+export interface Jugador {
+  id: number;
+  nombre: string;
+  apellido: string;
+  pareja_id: number;
+  campeonato_id: number;
 } 

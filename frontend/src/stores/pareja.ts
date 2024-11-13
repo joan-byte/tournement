@@ -2,79 +2,64 @@ import { defineStore } from 'pinia'
 import axios from 'axios'
 import type { Pareja } from '@/types'
 
-interface ParejaState {
-  parejas: Pareja[];
-}
-
-interface CreateParejaData {
-  nombre: string;
-  club?: string;
-  campeonato_id: number;
-  numero?: number;
-  jugador1: {
-    nombre: string;
-    apellido: string;
-  };
-  jugador2: {
-    nombre: string;
-    apellido: string;
-  };
-}
-
-interface Jugador {
-  id: number;
-  nombre: string;
-  apellido: string;
-  pareja_id: number;
-  campeonato_id: number;
-}
-
 export const useParejaStore = defineStore('pareja', {
-  state: (): ParejaState => ({
-    parejas: []
+  state: () => ({
+    parejas: [] as Pareja[]
   }),
-  
+
   actions: {
     async fetchParejasCampeonato(campeonatoId: number) {
       try {
-        const response = await axios.get<Pareja[]>('/api/parejas/', {
-          params: { campeonato_id: campeonatoId }
-        })
-        this.parejas = response.data
-        return this.parejas
+        const response = await axios.get(`/api/parejas/campeonato/${campeonatoId}`)
+        return response.data
       } catch (error) {
+        console.error('Error fetching parejas:', error)
+        throw error
+      }
+    },
+
+    async createPareja(parejaData: any) {
+      try {
+        const response = await axios.post('/api/parejas', parejaData)
+        return response.data
+      } catch (error) {
+        console.error('Error creating pareja:', error)
         throw error
       }
     },
 
     async fetchJugadoresPareja(parejaId: number) {
       try {
-        const response = await axios.get<{ jugadores: Jugador[] }>(`/api/parejas/${parejaId}/jugadores`)
-        return response.data.jugadores
-      } catch (error) {
-        throw error
-      }
-    },
-
-    async createPareja(data: CreateParejaData) {
-      try {
-        const response = await axios.post<Pareja>('/api/parejas/', data)
-        this.parejas.push(response.data)
-        return response.data
-      } catch (error) {
-        throw error
-      }
-    },
-
-    async updatePareja(parejaId: number, data: Partial<CreateParejaData>) {
-      try {
-        const response = await axios.put<Pareja>(`/api/parejas/${parejaId}`, data)
-        const index = this.parejas.findIndex((p: Pareja) => p.id === parejaId)
-        if (index !== -1) {
-          this.parejas[index] = response.data
+        const response = await axios.get(`/api/parejas/${parejaId}/jugadores`)
+        console.log('Respuesta del servidor:', response.data)
+        
+        if (!response.data || !Array.isArray(response.data) || response.data.length !== 2) {
+          console.error('Formato de respuesta inválido:', response.data)
+          throw new Error('Formato de respuesta inválido')
         }
+        
         return response.data
       } catch (error) {
+        console.error('Error fetching jugadores:', error)
+        throw error
+      }
+    },
+
+    async toggleParejaEstado(parejaId: number, estado: boolean) {
+      try {
+        await axios.put(`/api/parejas/${parejaId}`, { activa: estado })
+      } catch (error) {
+        console.error('Error toggling pareja estado:', error)
+        throw error
+      }
+    },
+
+    async updatePareja(parejaId: number, data: any) {
+      try {
+        const response = await axios.put(`/api/parejas/${parejaId}`, data)
+        return response.data
+      } catch (error) {
+        console.error('Error updating pareja:', error)
         throw error
       }
     },
@@ -82,21 +67,8 @@ export const useParejaStore = defineStore('pareja', {
     async deletePareja(parejaId: number) {
       try {
         await axios.delete(`/api/parejas/${parejaId}`)
-        this.parejas = this.parejas.filter((p: Pareja) => p.id !== parejaId)
       } catch (error) {
-        throw error
-      }
-    },
-
-    async toggleParejaEstado(parejaId: number, activa: boolean) {
-      try {
-        const response = await axios.put<Pareja>(`/api/parejas/${parejaId}`, { activa })
-        const index = this.parejas.findIndex((p: Pareja) => p.id === parejaId)
-        if (index !== -1) {
-          this.parejas[index] = response.data
-        }
-        return response.data
-      } catch (error) {
+        console.error('Error deleting pareja:', error)
         throw error
       }
     }
