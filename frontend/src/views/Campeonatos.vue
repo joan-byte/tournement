@@ -124,7 +124,17 @@ const formatearFecha = (dateString: string) => {
 
 const seleccionarCampeonato = async (campeonato: Campeonato) => {
   try {
-    campeonatoStore.setCampeonatoActual(campeonato)
+    // Esperar a que se complete la actualización del estado
+    await campeonatoStore.setCampeonatoActual(null) // Primero limpiamos el estado actual
+    await campeonatoStore.setCampeonatoActual(campeonato)
+    
+    // Verificar que el estado se actualizó correctamente
+    const currentCampeonato = campeonatoStore.getCurrentCampeonato()
+    if (currentCampeonato?.id !== campeonato.id) {
+      throw new Error('Error al actualizar el campeonato actual')
+    }
+    
+    // Solo navegar si la actualización fue exitosa
     router.push('/parejas')
   } catch (error) {
     console.error('Error al seleccionar campeonato:', error)

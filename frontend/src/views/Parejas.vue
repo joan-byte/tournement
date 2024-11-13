@@ -124,26 +124,21 @@ import type { Campeonato, Pareja } from '@/types'
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
 
-const campeonatoActual = ref<Campeonato | null>(null)
 const parejas = ref<Pareja[]>([])
 const showNewParejaModal = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 const parejaEnEdicion = ref<Pareja | null>(null)
 
-onMounted(async () => {
-  campeonatoActual.value = campeonatoStore.getCurrentCampeonato()
-  if (campeonatoActual.value) {
-    await loadParejas()
-  }
-})
+const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
+// Definir loadParejas antes de usarlo en cualquier otro lugar
 const loadParejas = async () => {
   try {
     isLoading.value = true
-    if (campeonatoActual.value) {
-      const response = await parejaStore.fetchParejasCampeonato(campeonatoActual.value.id)
-      console.log('Parejas cargadas:', response)  // Añadir este log
+    const currentCampeonato = campeonatoStore.getCurrentCampeonato()
+    if (currentCampeonato) {
+      const response = await parejaStore.fetchParejasCampeonato(currentCampeonato.id)
       parejas.value = Array.isArray(response) ? response : []
     }
   } catch (e) {
@@ -155,8 +150,23 @@ const loadParejas = async () => {
   }
 }
 
+// Usar una función asíncrona inmediata para observar cambios
+const observarCampeonato = async () => {
+  if (campeonatoActual.value) {
+    await loadParejas()
+  }
+}
+
+// Configurar el observador después de definir todas las funciones
+onMounted(async () => {
+  await campeonatoStore.loadCampeonatoActual()
+  await observarCampeonato()
+})
+
+// Observar cambios en campeonatoActual
+campeonatoActual.value && observarCampeonato()
+
 const parejasOrdenadas = computed(() => {
-  console.log('Calculando parejas ordenadas:', parejas.value)  // Añadir este log
   if (!Array.isArray(parejas.value)) return []
   return [...parejas.value]
     .filter(p => p && typeof p.numero === 'number')

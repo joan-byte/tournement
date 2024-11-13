@@ -13,6 +13,11 @@ declare module 'vue' {
   export function ref<T>(value: T): Ref<T>
   export function computed<T>(getter: () => T): Ref<T>
   export function onMounted(callback: () => void): void
+  export function watch<T>(
+    source: Ref<T> | (() => T),
+    callback: (newValue: T, oldValue: T) => void,
+    options?: { immediate?: boolean }
+  ): void
   export const createApp: any
 }
 
