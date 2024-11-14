@@ -159,17 +159,26 @@ const error = ref('')
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
 interface ResultadoPareja {
-  RP: number  // Solo necesitamos el RP, el resto se calcula en el backend
+  RP: number
+  PP: number
+  PG: number
+  GB: string
   id_pareja: number
 }
 
 const formData = ref({
   pareja1: {
     RP: 0,
+    PP: 0,
+    PG: 0,
+    GB: 'A',
     id_pareja: 0
   } as ResultadoPareja,
   pareja2: {
     RP: 0,
+    PP: 0,
+    PG: 0,
+    GB: 'A',
     id_pareja: 0
   } as ResultadoPareja
 })
@@ -237,12 +246,18 @@ const loadMesa = async () => {
         formData.value = {
           pareja1: {
             RP: resultados.pareja1.RP,
+            PP: resultados.pareja1.PP,
+            PG: resultados.pareja1.PG,
+            GB: resultados.pareja1.GB,
             id_pareja: resultados.pareja1.id_pareja
           },
           pareja2: resultados.pareja2 ? {
             RP: resultados.pareja2.RP,
+            PP: resultados.pareja2.PP,
+            PG: resultados.pareja2.PG,
+            GB: resultados.pareja2.GB,
             id_pareja: resultados.pareja2.id_pareja
-          } : { RP: 0, id_pareja: 0 }
+          } : { RP: 0, PP: 0, PG: 0, GB: 'A', id_pareja: 0 }
         }
       }
     }
@@ -268,11 +283,17 @@ const handleSubmit = async () => {
       resultados: {
         pareja1: {
           id_pareja: mesa.value.pareja1.id,
-          RP: formData.value.pareja1.RP
+          RP: formData.value.pareja1.RP,
+          PP: formData.value.pareja1.PP,
+          PG: formData.value.pareja1.PG,
+          GB: formData.value.pareja1.GB
         },
         pareja2: mesa.value.pareja2 ? {
           id_pareja: mesa.value.pareja2.id,
-          RP: formData.value.pareja2.RP
+          RP: formData.value.pareja2.RP,
+          PP: formData.value.pareja2.PP,
+          PG: formData.value.pareja2.PG,
+          GB: formData.value.pareja2.GB
         } : null
       }
     }
