@@ -2,9 +2,14 @@
   <div class="container mx-auto p-4">
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
       <div class="px-4 py-5 sm:px-6">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">
-          Asignación de Mesas
-        </h3>
+        <div class="flex justify-between items-center">
+          <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Asignación de Mesas
+          </h3>
+          <span class="text-lg font-medium text-gray-900">
+            Partida {{ campeonatoActual?.partida_actual || 1 }}
+          </span>
+        </div>
         <p class="mt-1 max-w-2xl text-sm text-gray-500">
           {{ campeonatoActual?.nombre }}
         </p>
@@ -33,7 +38,7 @@
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Club
                 </th>
-                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider pr-6">
                   Mesa
                 </th>
               </tr>
@@ -49,7 +54,7 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ pareja.club || 'Sin club' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right pr-6">
                   {{ pareja.mesa_numero }}
                 </td>
               </tr>
@@ -62,17 +67,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useMesaStore } from '@/stores/mesa'
-import type { Pareja } from '@/types'
+import type { Campeonato } from '@/types'
+
+interface ParejaConMesa {
+  id: number
+  numero: number
+  nombre: string
+  club?: string
+  mesa_numero: number
+}
 
 const campeonatoStore = useCampeonatoStore()
 const mesaStore = useMesaStore()
 
 const isLoading = ref(true)
 const error = ref('')
-const parejasMesas = ref<any[]>([])
+const parejasMesas = ref<ParejaConMesa[]>([])
 const currentIndex = ref(0)
 const intervalId = ref<number | null>(null)
 
@@ -89,11 +102,36 @@ const loadMesas = async () => {
     isLoading.value = true
     if (campeonatoActual.value) {
       const response = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
-      parejasMesas.value = response.sort((a, b) => a.numero - b.numero)
+      
+      // Transformar la respuesta en un array de parejas con su mesa asignada
+      const parejas: ParejaConMesa[] = []
+      response.forEach((mesa: any) => {
+        if (mesa.pareja1) {
+          parejas.push({
+            id: mesa.pareja1.id,
+            numero: mesa.pareja1.numero,
+            nombre: mesa.pareja1.nombre,
+            club: mesa.pareja1.club,
+            mesa_numero: mesa.numero
+          })
+        }
+        if (mesa.pareja2) {
+          parejas.push({
+            id: mesa.pareja2.id,
+            numero: mesa.pareja2.numero,
+            nombre: mesa.pareja2.nombre,
+            club: mesa.pareja2.club,
+            mesa_numero: mesa.numero
+          })
+        }
+      })
+      
+      // Ordenar por número de pareja
+      parejasMesas.value = parejas.sort((a, b) => a.numero - b.numero)
     }
   } catch (e) {
     console.error('Error al cargar mesas:', e)
-    error.value = 'Error al cargar las mesas asignadas'
+    error.value = 'Error al cargar las mesas'
   } finally {
     isLoading.value = false
   }
@@ -118,9 +156,12 @@ onMounted(async () => {
   }
 })
 
-onUnmounted(() => {
-  if (intervalId.value) {
-    clearInterval(intervalId.value)
-  }
-})
+// Limpiar el intervalo cuando el componente se desmonta
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeunload', () => {
+    if (intervalId.value) {
+      clearInterval(intervalId.value)
+    }
+  })
+}
 </script> 

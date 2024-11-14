@@ -1,160 +1,201 @@
 <template>
   <div class="container mx-auto p-4">
-    <div class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-      <h2 class="text-2xl font-bold mb-6">Registro de Resultado - Mesa {{ mesa?.numero }}</h2>
-      
-      <div v-if="isLoading" class="text-center">
-        Cargando datos...
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div class="px-4 py-5 sm:px-6">
+        <h3 class="text-lg leading-6 font-medium text-gray-900">
+          Registro de Resultado - Mesa {{ mesa?.numero }}
+        </h3>
+        <p class="mt-1 max-w-2xl text-sm text-gray-500">
+          {{ campeonatoActual?.nombre }} - Partida {{ campeonatoActual?.partida_actual }}
+        </p>
       </div>
-      <div v-else-if="error" class="text-red-500">
-        {{ error }}
-      </div>
-      <form v-else @submit.prevent="guardarResultado" class="space-y-6">
-        <!-- Pareja 1 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold">{{ obtenerNombrePareja(mesa?.pareja1_id) }}</h3>
-            <div>
-              <label class="block text-gray-700 text-sm font-bold mb-2">
-                Resultado Parcial
-              </label>
-              <input
-                v-model.number="resultado1.RP"
-                type="number"
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                required
-              >
+
+      <div class="border-t border-gray-200 px-4 py-5">
+        <form @submit.prevent="handleSubmit">
+          <!-- Pareja 1 -->
+          <div class="mb-6">
+            <div class="flex items-center space-x-4 mb-2">
+              <span class="text-sm font-medium text-gray-900">{{ mesa?.pareja1?.numero }}</span>
+              <span class="text-sm text-gray-500">{{ mesa?.pareja1?.nombre }}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="pareja1_pg" class="block text-sm font-medium text-gray-700">Puntos Ganados</label>
+                <input
+                  type="number"
+                  id="pareja1_pg"
+                  name="pareja1_pg"
+                  v-model="formData.pareja1.PG"
+                  required
+                  min="0"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label for="pareja1_pp" class="block text-sm font-medium text-gray-700">Puntos Perdidos</label>
+                <input
+                  type="number"
+                  id="pareja1_pp"
+                  name="pareja1_pp"
+                  v-model="formData.pareja1.PP"
+                  required
+                  min="0"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
             </div>
           </div>
 
           <!-- Pareja 2 -->
-          <div v-if="mesa?.pareja2_id" class="space-y-4">
-            <h3 class="text-lg font-semibold">{{ obtenerNombrePareja(mesa.pareja2_id) }}</h3>
-            <div>
-              <label class="block text-gray-700 text-sm font-bold mb-2">
-                Resultado Parcial
-              </label>
-              <input
-                v-model.number="resultado2.RP"
-                type="number"
-                class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                required
-              >
+          <div v-if="mesa?.pareja2" class="mb-6">
+            <div class="flex items-center space-x-4 mb-2">
+              <span class="text-sm font-medium text-gray-900">{{ mesa.pareja2.numero }}</span>
+              <span class="text-sm text-gray-500">{{ mesa.pareja2.nombre }}</span>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label for="pareja2_pg" class="block text-sm font-medium text-gray-700">Puntos Ganados</label>
+                <input
+                  type="number"
+                  id="pareja2_pg"
+                  name="pareja2_pg"
+                  v-model="formData.pareja2.PG"
+                  required
+                  min="0"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
+              <div>
+                <label for="pareja2_pp" class="block text-sm font-medium text-gray-700">Puntos Perdidos</label>
+                <input
+                  type="number"
+                  id="pareja2_pp"
+                  name="pareja2_pp"
+                  v-model="formData.pareja2.PP"
+                  required
+                  min="0"
+                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                />
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="flex justify-end space-x-4">
-          <button
-            type="button"
-            @click="$router.back()"
-            class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline"
-          >
-            Guardar
-          </button>
-        </div>
-      </form>
+          <!-- Botones -->
+          <div class="flex justify-end space-x-3">
+            <button
+              type="button"
+              @click="$router.back()"
+              class="inline-flex justify-center py-2 px-4 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            >
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useCampeonatoStore } from '@/stores/campeonato'
 import { useMesaStore } from '@/stores/mesa'
-import { useParejaStore } from '@/stores/pareja'
 import { useResultadoStore } from '@/stores/resultado'
-import type { Mesa, ResultadoBase } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
+const campeonatoStore = useCampeonatoStore()
 const mesaStore = useMesaStore()
-const parejaStore = useParejaStore()
 const resultadoStore = useResultadoStore()
 
-const mesa = ref<Mesa | null>(null)
+const mesa = ref<any>(null)
 const isLoading = ref(true)
 const error = ref('')
 
-const resultado1 = ref<ResultadoBase>({
-  campeonato_id: Number(route.query.campeonato),
-  P: Number(route.query.partida),
-  M: Number(route.params.mesaId),
-  id_pareja: 0,
-  RP: 0,
-  PG: 0,
-  PP: 0,
-  GB: 'A'
+const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
+
+const formData = ref({
+  pareja1: {
+    PG: 0,
+    PP: 0
+  },
+  pareja2: {
+    PG: 0,
+    PP: 0
+  }
 })
 
-const resultado2 = ref<ResultadoBase>({
-  campeonato_id: Number(route.query.campeonato),
-  P: Number(route.query.partida),
-  M: Number(route.params.mesaId),
-  id_pareja: 0,
-  RP: 0,
-  PG: 0,
-  PP: 0,
-  GB: 'A'
-})
-
-onMounted(async () => {
+const loadMesa = async () => {
   try {
-    await cargarDatos()
+    const mesaId = parseInt(route.params.mesaId as string)
+    if (campeonatoActual.value) {
+      const response = await mesaStore.getMesa(mesaId)
+      mesa.value = response
+
+      // Si hay resultados previos, cargarlos
+      const resultados = await resultadoStore.getResultadoMesa(
+        mesaId,
+        campeonatoActual.value.partida_actual || 1
+      )
+      if (resultados) {
+        formData.value = {
+          pareja1: {
+            PG: resultados.pareja1.PG,
+            PP: resultados.pareja1.PP
+          },
+          pareja2: resultados.pareja2 ? {
+            PG: resultados.pareja2.PG,
+            PP: resultados.pareja2.PP
+          } : { PG: 0, PP: 0 }
+        }
+      }
+    }
   } catch (e) {
-    error.value = 'Error al cargar los datos'
-    console.error(e)
+    console.error('Error al cargar mesa:', e)
+    error.value = 'Error al cargar los datos de la mesa'
   } finally {
     isLoading.value = false
   }
-})
-
-const cargarDatos = async () => {
-  const mesas = await mesaStore.fetchMesas(Number(route.query.campeonato))
-  mesa.value = mesas.find(m => m.id === Number(route.params.mesaId)) || null
-  
-  if (mesa.value) {
-    resultado1.value.id_pareja = mesa.value.pareja1_id
-    if (mesa.value.pareja2_id) {
-      resultado2.value.id_pareja = mesa.value.pareja2_id
-    }
-  }
 }
 
-const obtenerNombrePareja = (parejaId: number | null) => {
-  if (!parejaId) return '-'
-  const pareja = parejaStore.parejas.find(p => p.id === parejaId)
-  return pareja ? pareja.nombre : 'Desconocida'
-}
-
-const guardarResultado = async () => {
-  if (!resultadoStore.validarResultados(resultado1.value, resultado2.value)) {
-    error.value = 'Los resultados no son válidos'
-    return
-  }
-
+const handleSubmit = async () => {
   try {
-    const resultadosCalculados = resultadoStore.calcularResultados(
-      resultado1.value,
-      mesa.value?.pareja2_id ? resultado2.value : null
-    )
+    if (!campeonatoActual.value || !mesa.value) return
 
-    await resultadoStore.guardarResultados({
-      campeonato_id: Number(route.query.campeonato),
-      pareja1: resultadosCalculados.pareja1,
-      pareja2: resultadosCalculados.pareja2
-    })
+    const resultado = {
+      mesa_id: mesa.value.id,
+      campeonato_id: campeonatoActual.value.id,
+      partida: campeonatoActual.value.partida_actual,
+      resultados: {
+        pareja1: {
+          id_pareja: mesa.value.pareja1.id,
+          PG: formData.value.pareja1.PG,
+          PP: formData.value.pareja1.PP
+        },
+        pareja2: mesa.value.pareja2 ? {
+          id_pareja: mesa.value.pareja2.id,
+          PG: formData.value.pareja2.PG,
+          PP: formData.value.pareja2.PP
+        } : null
+      }
+    }
 
-    router.back()
+    await resultadoStore.saveResultado(resultado)
+    router.push('/mesas/resultados')
   } catch (e) {
-    error.value = 'Error al guardar los resultados'
-    console.error(e)
+    console.error('Error al guardar resultado:', e)
+    error.value = 'Error al guardar el resultado'
   }
 }
+
+onMounted(async () => {
+  await loadMesa()
+})
 </script> 

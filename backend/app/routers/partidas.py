@@ -69,32 +69,51 @@ def eliminar_mesas(campeonato_id: int, db: Session = Depends(get_db)):
 @router.get("/{campeonato_id}/mesas")
 def get_mesas_asignadas(campeonato_id: int, db: Session = Depends(get_db)):
     try:
-        # Obtener todas las mesas del campeonato con sus parejas
         mesas = db.query(Mesa).filter(
             Mesa.campeonato_id == campeonato_id
-        ).all()
+        ).order_by(Mesa.numero).all()
         
-        # Preparar la lista de parejas con sus mesas asignadas
-        parejas_mesas = []
-        for mesa in mesas:
-            if mesa.pareja1:
-                parejas_mesas.append({
-                    "id": mesa.pareja1.id,
-                    "numero": mesa.pareja1.numero,
-                    "nombre": mesa.pareja1.nombre,
-                    "club": mesa.pareja1.club,
-                    "mesa_numero": mesa.numero
-                })
-            if mesa.pareja2:
-                parejas_mesas.append({
-                    "id": mesa.pareja2.id,
-                    "numero": mesa.pareja2.numero,
-                    "nombre": mesa.pareja2.nombre,
-                    "club": mesa.pareja2.club,
-                    "mesa_numero": mesa.numero
-                })
-        
-        return parejas_mesas
+        return [{
+            "id": mesa.id,
+            "numero": mesa.numero,
+            "pareja1": {
+                "id": mesa.pareja1.id,
+                "numero": mesa.pareja1.numero,
+                "nombre": mesa.pareja1.nombre
+            } if mesa.pareja1 else None,
+            "pareja2": {
+                "id": mesa.pareja2.id,
+                "numero": mesa.pareja2.numero,
+                "nombre": mesa.pareja2.nombre
+            } if mesa.pareja2 else None,
+            "tieneResultado": bool(mesa.resultados)
+        } for mesa in mesas]
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.get("/mesa/{mesa_id}")
+def get_mesa(mesa_id: int, db: Session = Depends(get_db)):
+    try:
+        mesa = db.query(Mesa).filter(Mesa.id == mesa_id).first()
+        if not mesa:
+            raise HTTPException(status_code=404, detail="Mesa no encontrada")
+            
+        return {
+            "id": mesa.id,
+            "numero": mesa.numero,
+            "pareja1": {
+                "id": mesa.pareja1.id,
+                "numero": mesa.pareja1.numero,
+                "nombre": mesa.pareja1.nombre
+            } if mesa.pareja1 else None,
+            "pareja2": {
+                "id": mesa.pareja2.id,
+                "numero": mesa.pareja2.numero,
+                "nombre": mesa.pareja2.nombre
+            } if mesa.pareja2 else None,
+            "tieneResultado": bool(mesa.resultados)
+        }
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -35,6 +35,16 @@ export const useMesaStore = defineStore('mesa', {
         console.error('Error al obtener mesas asignadas:', error)
         throw error
       }
+    },
+
+    async getMesa(mesaId: number) {
+      try {
+        const response = await axios.get(`/api/partidas/mesa/${mesaId}`)
+        return response.data
+      } catch (error) {
+        console.error('Error al obtener mesa:', error)
+        throw error
+      }
     }
   }
 }) 

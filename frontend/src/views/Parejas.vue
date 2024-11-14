@@ -161,6 +161,14 @@ const loadParejas = async () => {
     if (currentCampeonato) {
       const response = await parejaStore.fetchParejasCampeonato(currentCampeonato.id)
       parejas.value = Array.isArray(response) ? response : []
+      
+      // Verificar si hay mesas asignadas
+      try {
+        const mesasResponse = await mesaStore.getMesasAsignadas(currentCampeonato.id)
+        inscripcionCerrada.value = mesasResponse && mesasResponse.length > 0
+      } catch (error) {
+        console.error('Error al verificar mesas:', error)
+      }
     }
   } catch (e) {
     console.error('Error al cargar parejas:', e)
@@ -222,11 +230,9 @@ const handleInscripcionButton = async () => {
   try {
     if (!campeonatoActual.value) return
 
-    // Obtener parejas activas
-    const parejasActivas = parejas.value.filter(p => p.activa)
-
     if (!inscripcionCerrada.value) {
       // Verificar que hay suficientes parejas activas (mínimo 4)
+      const parejasActivas = parejas.value.filter(p => p.activa)
       if (parejasActivas.length < 4) {
         alert('Se necesitan al menos 4 parejas activas para iniciar el campeonato')
         return
@@ -240,6 +246,9 @@ const handleInscripcionButton = async () => {
       await mesaStore.eliminarMesas(campeonatoActual.value.id)
       inscripcionCerrada.value = false
     }
+    
+    // Recargar las parejas y el estado de las mesas
+    await loadParejas()
   } catch (error) {
     console.error('Error al manejar inscripción:', error)
     alert('Error al realizar el sorteo de mesas')

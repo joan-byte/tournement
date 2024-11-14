@@ -3,6 +3,7 @@ import type { RouteRecordRaw } from 'vue-router'
 import Home from '@/views/Home.vue'
 import Campeonatos from '@/views/Campeonatos.vue'
 import Mesas from '@/views/Mesas.vue'
+import RegistroResultados from '@/views/RegistroResultados.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -49,6 +50,16 @@ const routes: RouteRecordRaw[] = [
     path: '/mesas',
     name: 'mesas',
     component: Mesas
+  },
+  {
+    path: '/mesas/asignacion',
+    name: 'asignacion-mesas',
+    component: () => import('@/views/Mesas.vue')
+  },
+  {
+    path: '/mesas/resultados',
+    name: 'registro-resultados',
+    component: RegistroResultados
   }
 ]
 

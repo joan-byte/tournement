@@ -13,16 +13,21 @@ declare module 'vue' {
   export function ref<T>(value: T): Ref<T>
   export function computed<T>(getter: () => T): Ref<T>
   export function onMounted(callback: () => void): void
-  export function watch<T>(
-    source: Ref<T> | (() => T),
-    callback: (newValue: T, oldValue: T) => void,
-    options?: { immediate?: boolean }
-  ): void
+  export function onUnmounted(callback: () => void): void
   export const createApp: any
 }
 
 declare module 'vue-router' {
   export function useRouter(): any
+  export function useRoute(): any
+  export function createRouter(options: any): any
+  export function createWebHistory(base?: string): any
+  export interface RouteRecordRaw {
+    path: string
+    name?: string
+    component: any
+    children?: RouteRecordRaw[]
+  }
 }
 
 declare module '@/stores/*' {
@@ -75,7 +80,18 @@ declare module '@/stores/pareja' {
 
 declare module '@/stores/mesa' {
   export function useMesaStore(): {
-    sortearMesas: (campeonatoId: number) => Promise<void>
-    eliminarMesas: (campeonatoId: number) => Promise<void>
+    mesas: any[]
+    sortearMesas: (campeonatoId: number) => Promise<any>
+    eliminarMesas: (campeonatoId: number) => Promise<any>
+    getMesasAsignadas: (campeonatoId: number) => Promise<any>
+    getMesa: (mesaId: number) => Promise<any>
+  }
+}
+
+declare module '@/stores/resultado' {
+  export function useResultadoStore(): {
+    resultados: any[]
+    saveResultado: (resultado: any) => Promise<any>
+    getResultadoMesa: (mesaId: number, partida: number) => Promise<any>
   }
 }
