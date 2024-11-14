@@ -14,20 +14,11 @@ class Resultado(Base):
     PG = Column(Integer)
     PP = Column(Integer)
     RP = Column(Integer)
-    PT = Column(Integer)
 
     # Relaciones
     campeonato = relationship("Campeonato", back_populates="resultados")
     mesa = relationship("Mesa", back_populates="resultados")
     pareja = relationship("Pareja", back_populates="resultados")
-
-    def calcular_puntos_totales(self):
-        if self.RP > 0:
-            self.PT = 2 + self.RP
-        elif self.PG >= 50:
-            self.PT = 1
-        else:
-            self.PT = 0
 
     def to_dict(self):
         return {
@@ -39,12 +30,10 @@ class Resultado(Base):
             "GB": self.GB,
             "PG": self.PG,
             "PP": self.PP,
-            "RP": self.RP,
-            "PT": self.PT
+            "RP": self.RP
         }
 
 @event.listens_for(Resultado, 'before_insert')
 @event.listens_for(Resultado, 'before_update')
 def calcular_campos(mapper, connection, target):
-    target.RP = target.PG - target.PP
-    target.calcular_puntos_totales()
+    target.PG = 1 if target.PP > 0 else 0

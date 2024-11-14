@@ -12,7 +12,7 @@ export const useResultadoStore = defineStore('resultado', {
         const response = await axios.post('/api/resultados', resultado)
         return response.data
       } catch (error) {
-        console.error('Error saving resultado:', error)
+        console.error('Error guardando resultado:', error)
         throw error
       }
     },
