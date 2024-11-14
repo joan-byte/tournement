@@ -93,5 +93,6 @@ declare module '@/stores/resultado' {
     resultados: any[]
     saveResultado: (resultado: any) => Promise<any>
     getResultadoMesa: (mesaId: number, partida: number) => Promise<any>
+    fetchResultados: (campeonatoId: number) => Promise<import('@/types').Resultado[]>
   }
 }

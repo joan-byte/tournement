@@ -60,7 +60,8 @@
 import { ref, onMounted } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useResultadoStore } from '@/stores/resultado'
-import type { Campeonato, Resultado } from '@/types'
+import type { Campeonato } from '@/types'
+import type { RankingResultado as Resultado } from '@/types/resultado'
 
 const campeonatoStore = useCampeonatoStore()
 const resultadoStore = useResultadoStore()

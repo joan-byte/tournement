@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
+import type { Resultado } from '@/types/resultado'
 
 export const useResultadoStore = defineStore('resultado', {
   state: () => ({
@@ -25,6 +26,16 @@ export const useResultadoStore = defineStore('resultado', {
         if (axios.isAxiosError(error) && error.response?.status === 404) {
           return null
         }
+        throw error
+      }
+    },
+
+    async fetchResultados(campeonatoId: number): Promise<Resultado[]> {
+      try {
+        const response = await axios.get(`/api/resultados/ranking/${campeonatoId}`)
+        return response.data
+      } catch (error) {
+        console.error('Error obteniendo resultados:', error)
         throw error
       }
     }
