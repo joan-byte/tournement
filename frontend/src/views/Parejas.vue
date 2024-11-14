@@ -1,6 +1,6 @@
 <template>
   <div class="container mx-auto p-4">
-    <!-- Panel superior con botón de Nueva Pareja -->
+    <!-- Panel superior con botones -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
       <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
         <div>
@@ -11,12 +11,29 @@
             {{ campeonatoActual?.nombre }}
           </p>
         </div>
-        <button
-          @click="showNewParejaModal = true"
-          class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-        >
-          Nueva Pareja
-        </button>
+        <div class="flex gap-4">
+          <!-- Botón de Cerrar Inscripción/Volver Atrás -->
+          <button
+            v-if="campeonatoActual"
+            @click="handleInscripcionButton"
+            :class="[
+              inscripcionCerrada 
+                ? 'bg-yellow-600 hover:bg-yellow-700' 
+                : 'bg-red-600 hover:bg-red-700',
+              'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2'
+            ]"
+          >
+            {{ inscripcionCerrada ? 'Volver Atrás' : 'Cerrar Inscripción' }}
+          </button>
+          <!-- Botón de Nueva Pareja -->
+          <button
+            @click="showNewParejaModal = true"
+            :disabled="inscripcionCerrada"
+            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Nueva Pareja
+          </button>
+        </div>
       </div>
     </div>
 
@@ -60,7 +77,8 @@
                   <div class="flex items-center space-x-2">
                     <button 
                       @click="editarPareja(pareja)"
-                      class="text-sm font-medium text-primary-600 hover:text-primary-900 hover:underline"
+                      :disabled="inscripcionCerrada"
+                      class="text-sm font-medium text-primary-600 hover:text-primary-900 hover:underline disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {{ pareja.nombre }}
                     </button>
@@ -120,15 +138,18 @@ import { useParejaStore } from '@/stores/pareja'
 import NuevaPareja from '@/components/Parejas/NuevaPareja.vue'
 import EditarPareja from '@/components/Parejas/EditarPareja.vue'
 import type { Campeonato, Pareja } from '@/types'
+import { useMesaStore } from '@/stores/mesa'
 
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
+const mesaStore = useMesaStore()
 
 const parejas = ref<Pareja[]>([])
 const showNewParejaModal = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 const parejaEnEdicion = ref<Pareja | null>(null)
+const inscripcionCerrada = ref(false)
 
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
@@ -183,6 +204,7 @@ const toggleParejaEstado = async (pareja: Pareja) => {
 }
 
 const editarPareja = (pareja: Pareja) => {
+  if (inscripcionCerrada.value) return
   parejaEnEdicion.value = pareja
 }
 
@@ -194,5 +216,33 @@ const onParejaCreated = async () => {
 const onParejaUpdated = async () => {
   parejaEnEdicion.value = null
   await loadParejas()
+}
+
+const handleInscripcionButton = async () => {
+  try {
+    if (!campeonatoActual.value) return
+
+    // Obtener parejas activas
+    const parejasActivas = parejas.value.filter(p => p.activa)
+
+    if (!inscripcionCerrada.value) {
+      // Verificar que hay suficientes parejas activas (mínimo 4)
+      if (parejasActivas.length < 4) {
+        alert('Se necesitan al menos 4 parejas activas para iniciar el campeonato')
+        return
+      }
+
+      // Cerrar inscripción y realizar sorteo
+      await mesaStore.sortearMesas(campeonatoActual.value.id)
+      inscripcionCerrada.value = true
+    } else {
+      // Volver atrás
+      await mesaStore.eliminarMesas(campeonatoActual.value.id)
+      inscripcionCerrada.value = false
+    }
+  } catch (error) {
+    console.error('Error al manejar inscripción:', error)
+    alert('Error al realizar el sorteo de mesas')
+  }
 }
 </script> 

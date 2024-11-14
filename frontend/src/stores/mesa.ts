@@ -1,31 +1,38 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
 
-interface MesaState {
-  mesas: any[];
-}
-
 export const useMesaStore = defineStore('mesa', {
-  state: (): MesaState => ({
+  state: () => ({
     mesas: []
   }),
-  
+
   actions: {
     async sortearMesas(campeonatoId: number) {
       try {
-        const response = await axios.post(`/api/mesas/sortear/${campeonatoId}`)
-        this.mesas = response.data
+        const response = await axios.post(`/api/partidas/${campeonatoId}/sorteo-inicial`)
         return response.data
       } catch (error) {
+        console.error('Error al sortear mesas:', error)
         throw error
       }
     },
 
     async eliminarMesas(campeonatoId: number) {
       try {
-        await axios.delete(`/api/mesas/campeonato/${campeonatoId}`)
-        this.mesas = []
+        const response = await axios.delete(`/api/partidas/${campeonatoId}/mesas`)
+        return response.data
       } catch (error) {
+        console.error('Error al eliminar mesas:', error)
+        throw error
+      }
+    },
+
+    async getMesasAsignadas(campeonatoId: number) {
+      try {
+        const response = await axios.get(`/api/partidas/${campeonatoId}/mesas`)
+        return response.data
+      } catch (error) {
+        console.error('Error al obtener mesas asignadas:', error)
         throw error
       }
     }
