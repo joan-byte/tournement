@@ -1,4 +1,4 @@
-import type { Campeonato, Pareja } from './index'
+import type { Campeonato, Pareja, Mesa } from './index'
 
 export interface CampeonatoStoreState {
   campeonatoActual: Campeonato | null
@@ -19,8 +19,22 @@ export interface CampeonatoStoreActions {
 
 export type CampeonatoStore = CampeonatoStoreState & CampeonatoStoreActions
 
+export interface MesaState {
+  mesas: Mesa[]
+}
+
+export interface MesaStoreActions {
+  getMesasAsignadas: (campeonatoId: number) => Promise<Mesa[]>
+  getMesa: (mesaId: number) => Promise<Mesa>
+  sortearMesas: (campeonatoId: number) => Promise<any>
+  eliminarMesas: (campeonatoId: number) => Promise<any>
+}
+
+export type MesaStore = MesaState & MesaStoreActions
+
 declare module 'pinia' {
   export interface PiniaCustomProperties {
     campeonatoStore: CampeonatoStore
+    mesaStore: MesaStore
   }
 } 

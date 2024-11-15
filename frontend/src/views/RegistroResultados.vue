@@ -7,15 +7,16 @@
             Registro de Resultados
           </h3>
           <span class="text-lg font-medium text-gray-900">
-            Partida {{ campeonatoActual?.partida_actual || 1 }}
+            Partida {{ campeonatoActual?.partida_actual }}
           </span>
         </div>
         <div v-if="todasMesasRegistradas" class="mt-4">
           <button
-            @click="cerrarPartida"
-            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+            @click="esUltimaPartida ? finalizarCampeonato() : cerrarPartida()"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white"
+            :class="esUltimaPartida ? 'bg-green-600 hover:bg-green-700' : 'bg-primary-600 hover:bg-primary-700'"
           >
-            Cerrar Partida
+            {{ esUltimaPartida ? 'Finalizar Campeonato' : 'Cerrar Partida' }}
           </button>
         </div>
       </div>
@@ -123,8 +124,11 @@ const cerrarPartida = async () => {
 
     const campeonatoActualizado = {
       ...campeonatoActual.value,
-      partida_actual: (campeonatoActual.value.partida_actual || 0) + 1
-    }
+      partida_actual: (campeonatoActual.value.partida_actual || 0) + 1,
+      fecha_inicio: campeonatoActual.value.fecha_inicio,
+      dias_duracion: campeonatoActual.value.dias_duracion,
+      numero_partidas: campeonatoActual.value.numero_partidas
+    } as Campeonato;
 
     await campeonatoStore.updateCampeonato(
       campeonatoActual.value.id,
@@ -153,4 +157,22 @@ const registrarResultado = (mesa: Mesa) => {
 const todasMesasRegistradas = computed(() => {
   return mesas.value.length > 0 && mesas.value.every(mesa => mesa.tieneResultado)
 })
+
+const esUltimaPartida = computed(() => {
+  return campeonatoActual.value?.partida_actual === campeonatoActual.value?.numero_partidas
+})
+
+const finalizarCampeonato = async () => {
+  try {
+    if (!campeonatoActual.value) return
+
+    // Actualizar el estado del campeonato si es necesario
+    // Aquí podrías marcar el campeonato como finalizado si tienes ese campo
+
+    // Redirigir al podium
+    router.push('/podium')
+  } catch (error) {
+    console.error('Error al finalizar campeonato:', error)
+  }
+}
 </script> 

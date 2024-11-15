@@ -4,6 +4,7 @@ import Home from '@/views/Home.vue'
 import Campeonatos from '@/views/Campeonatos.vue'
 import Mesas from '@/views/Mesas.vue'
 import RegistroResultados from '@/views/RegistroResultados.vue'
+import Podium from '@/components/Partidas/Podium.vue'
 
 const routes: RouteRecordRaw[] = [
   {
@@ -44,7 +45,7 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/podium',
     name: 'podium',
-    component: () => import('@/components/Partidas/Podium.vue')
+    component: Podium
   },
   {
     path: '/mesas',

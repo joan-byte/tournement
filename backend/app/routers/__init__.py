@@ -1,13 +1,15 @@
-from .jugadores import router as jugadores_router
-from .campeonatos import router as campeonatos_router
-from .partidas import router as partidas_router
-from .resultados import router as resultados_router
-from .mesas import router as mesas_router
+from .campeonatos import router as campeonatos
+from .parejas import router as parejas
+from .jugadores import router as jugadores
+from .mesas import router as mesas
+from .partidas import router as partidas
+from .resultados import router as resultados
 
 __all__ = [
-    'jugadores_router',
-    'campeonatos_router',
-    'partidas_router',
-    'resultados_router',
-    'mesas_router'
+    'campeonatos',
+    'parejas',
+    'jugadores',
+    'mesas',
+    'partidas',
+    'resultados'
 ] 
