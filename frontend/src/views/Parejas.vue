@@ -151,11 +151,15 @@ const showNewParejaModal = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 const parejaEnEdicion = ref<Pareja | null>(null)
+const inscripcionEstado = ref(false)
+
+// Computed para obtener el campeonato actual
+const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
+
+// Computed para verificar si la inscripción está cerrada
 const inscripcionCerrada = computed(() => {
   return campeonatoActual.value?.partida_actual > 0
 })
-
-const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
 // Definir loadParejas antes de usarlo en cualquier otro lugar
 const loadParejas = async () => {
@@ -169,7 +173,7 @@ const loadParejas = async () => {
       // Verificar si hay mesas asignadas
       try {
         const mesasResponse = await mesaStore.getMesasAsignadas(currentCampeonato.id)
-        inscripcionCerrada.value = mesasResponse && mesasResponse.length > 0
+        inscripcionEstado.value = mesasResponse && mesasResponse.length > 0
       } catch (error) {
         console.error('Error al verificar mesas:', error)
       }
@@ -183,21 +187,25 @@ const loadParejas = async () => {
   }
 }
 
-// Usar una función asíncrona inmediata para observar cambios
-const observarCampeonato = async () => {
-  if (campeonatoActual.value) {
-    await loadParejas()
-  }
-}
-
 // Configurar el observador después de definir todas las funciones
 onMounted(async () => {
   await campeonatoStore.loadCampeonatoActual()
-  await observarCampeonato()
+  if (campeonatoActual.value) {
+    await loadParejas()
+  }
 })
 
-// Observar cambios en campeonatoActual
-campeonatoActual.value && observarCampeonato()
+// Observar cambios en campeonatoActual manualmente
+let previousCampeonatoId: number | null = null
+setInterval(() => {
+  const currentId = campeonatoActual.value?.id
+  if (currentId !== previousCampeonatoId) {
+    previousCampeonatoId = currentId
+    if (currentId) {
+      loadParejas()
+    }
+  }
+}, 100)
 
 const parejasOrdenadas = computed(() => {
   if (!Array.isArray(parejas.value)) return []
@@ -234,7 +242,7 @@ const handleInscripcionButton = async () => {
   try {
     if (!campeonatoActual.value) return
 
-    if (!inscripcionCerrada.value) {
+    if (!inscripcionEstado.value) {
       // Verificar que hay suficientes parejas activas (mínimo 4)
       const parejasActivas = parejas.value.filter(p => p.activa)
       if (parejasActivas.length < 4) {
@@ -244,14 +252,13 @@ const handleInscripcionButton = async () => {
 
       // Cerrar inscripción y realizar sorteo
       await mesaStore.sortearMesas(campeonatoActual.value.id)
-      inscripcionCerrada.value = true
+      inscripcionEstado.value = true
     } else {
       // Volver atrás
       await mesaStore.eliminarMesas(campeonatoActual.value.id)
-      inscripcionCerrada.value = false
+      inscripcionEstado.value = false
     }
     
-    // Recargar las parejas y el estado de las mesas
     await loadParejas()
   } catch (error) {
     console.error('Error al manejar inscripción:', error)
@@ -260,7 +267,7 @@ const handleInscripcionButton = async () => {
 }
 
 const cerrarInscripcion = () => {
-  inscripcionCerrada.value = true
+  inscripcionEstado.value = true
 }
 
 const volverAtras = () => {
