@@ -51,7 +51,7 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="resultado in resultados" :key="resultado.pareja_id" 
+                <tr v-for="resultado in parejasVisibles" :key="resultado.pareja_id" 
                     :class="getPosicionClass(resultado.posicion)">
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {{ resultado.posicion }}
@@ -88,17 +88,42 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useResultadoStore } from '@/stores/resultado'
 import type { Campeonato } from '@/types'
-import type { RankingResultado as Resultado } from '@/types/resultado'
+import type { RankingResultado } from '@/types/resultado'
 
 const campeonatoStore = useCampeonatoStore()
 const resultadoStore = useResultadoStore()
 
-const resultados = ref<Resultado[]>([])
+const resultados = ref<RankingResultado[]>([])
 const campeonatoActual = ref<Campeonato | null>(null)
+const currentPage = ref(0)
+const intervalId = ref<number | null>(null)
+const checkIntervalId = ref<number | null>(null)
+const ITEMS_PER_PAGE = 20
+const ROTATION_INTERVAL = 10000 // 10 segundos
+
+const parejasVisibles = computed(() => {
+  const start = currentPage.value * ITEMS_PER_PAGE
+  const end = start + ITEMS_PER_PAGE
+  return resultados.value.slice(start, end)
+})
+
+const startRotation = () => {
+  if (resultados.value.length <= ITEMS_PER_PAGE) return
+
+  // Limpiar intervalo existente si hay uno
+  if (intervalId.value) {
+    clearInterval(intervalId.value)
+  }
+
+  intervalId.value = window.setInterval(() => {
+    const totalPages = Math.ceil(resultados.value.length / ITEMS_PER_PAGE)
+    currentPage.value = (currentPage.value + 1) % totalPages
+  }, ROTATION_INTERVAL)
+}
 
 const getPosicionClass = (posicion: number) => {
   switch (posicion) {
@@ -113,16 +138,39 @@ const getPosicionClass = (posicion: number) => {
   }
 }
 
-onMounted(async () => {
-  campeonatoActual.value = campeonatoStore.getCurrentCampeonato()
-  if (campeonatoActual.value) {
-    await loadResultados()
-  }
-})
-
 const loadResultados = async () => {
   if (campeonatoActual.value) {
     resultados.value = await resultadoStore.fetchResultados(campeonatoActual.value.id)
+    currentPage.value = 0
+    startRotation()
   }
 }
+
+const updateCampeonato = async () => {
+  const newCampeonato = campeonatoStore.getCurrentCampeonato()
+  if (newCampeonato?.id !== campeonatoActual.value?.id) {
+    campeonatoActual.value = newCampeonato
+    if (newCampeonato) {
+      await loadResultados()
+    }
+  }
+}
+
+onMounted(async () => {
+  await updateCampeonato()
+  startRotation()
+  
+  // Iniciar verificación periódica de cambios en el campeonato
+  checkIntervalId.value = window.setInterval(updateCampeonato, 5000)
+})
+
+onUnmounted(() => {
+  // Limpiar todos los intervalos
+  if (intervalId.value) {
+    clearInterval(intervalId.value)
+  }
+  if (checkIntervalId.value) {
+    clearInterval(checkIntervalId.value)
+  }
+})
 </script> 

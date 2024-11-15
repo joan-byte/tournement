@@ -10,9 +10,6 @@
             Partida {{ campeonatoActual?.partida_actual || 1 }}
           </span>
         </div>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">
-          {{ campeonatoActual?.nombre }}
-        </p>
       </div>
 
       <div class="border-t border-gray-200 px-4 py-5">
@@ -36,30 +33,30 @@
                   required
                   min="0"
                   max="300"
-                  @input="validarYCalcular"
+                  @input="calcularResultados"
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700">
-                  Partidas Ganadas <span class="text-xs text-gray-500">(PG)</span>
-                </label>
-                <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
-                  {{ formData.pareja1.PG }}
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">
+                <div class="block text-sm font-medium text-gray-700">
                   Puntos Partida <span class="text-xs text-gray-500">(PP)</span>
-                </label>
+                </div>
                 <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
                   {{ formData.pareja1.PP }}
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700">
+                <div class="block text-sm font-medium text-gray-700">
+                  Partidas Ganadas <span class="text-xs text-gray-500">(PG)</span>
+                </div>
+                <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
+                  {{ formData.pareja1.PG }}
+                </div>
+              </div>
+              <div>
+                <div class="block text-sm font-medium text-gray-700">
                   Grupo <span class="text-xs text-gray-500">(GB)</span>
-                </label>
+                </div>
                 <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
                   {{ formData.pareja1.GB }}
                 </div>
@@ -86,30 +83,30 @@
                   required
                   min="0"
                   max="300"
-                  @input="validarYCalcular"
+                  @input="calcularResultados"
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                 />
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700">
-                  Partidas Ganadas <span class="text-xs text-gray-500">(PG)</span>
-                </label>
-                <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
-                  {{ formData.pareja2.PG }}
-                </div>
-              </div>
-              <div>
-                <label class="block text-sm font-medium text-gray-700">
+                <div class="block text-sm font-medium text-gray-700">
                   Puntos Partida <span class="text-xs text-gray-500">(PP)</span>
-                </label>
+                </div>
                 <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
                   {{ formData.pareja2.PP }}
                 </div>
               </div>
               <div>
-                <label class="block text-sm font-medium text-gray-700">
+                <div class="block text-sm font-medium text-gray-700">
+                  Partidas Ganadas <span class="text-xs text-gray-500">(PG)</span>
+                </div>
+                <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
+                  {{ formData.pareja2.PG }}
+                </div>
+              </div>
+              <div>
+                <div class="block text-sm font-medium text-gray-700">
                   Grupo <span class="text-xs text-gray-500">(GB)</span>
-                </label>
+                </div>
                 <div class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-gray-50 rounded-md text-sm">
                   {{ formData.pareja2.GB }}
                 </div>
@@ -118,7 +115,7 @@
           </div>
 
           <!-- Botones -->
-          <div class="flex justify-end space-x-3 mt-6">
+          <div class="flex justify-end space-x-3">
             <button
               type="button"
               @click="$router.back()"
@@ -183,7 +180,7 @@ const formData = ref({
   } as ResultadoPareja
 })
 
-const validarYCalcular = () => {
+const calcularResultados = () => {
   // Convertir a números
   const rp1 = Number(formData.value.pareja1.RP)
   const rp2 = Number(formData.value.pareja2.RP)
@@ -234,15 +231,39 @@ const loadMesa = async () => {
   try {
     const mesaId = parseInt(route.params.mesaId as string)
     if (campeonatoActual.value) {
-      const response = await mesaStore.getMesa(mesaId)
-      mesa.value = response
+      // Cargar datos de la mesa
+      const mesaResponse = await mesaStore.getMesa(mesaId)
+      mesa.value = mesaResponse
 
-      // Si hay resultados previos, cargarlos
+      // Si es una mesa con una sola pareja, establecer valores predeterminados
+      if (mesa.value.pareja1 && !mesa.value.pareja2) {
+        formData.value = {
+          pareja1: {
+            RP: 150,
+            PP: 150,
+            PG: 1,
+            GB: 'A',
+            id_pareja: mesa.value.pareja1.id
+          },
+          pareja2: {
+            RP: 0,
+            PP: -150,
+            PG: 0,
+            GB: 'A',
+            id_pareja: 0
+          }
+        }
+        return
+      }
+
+      // Cargar resultados existentes si los hay
       const resultados = await resultadoStore.getResultadoMesa(
         mesaId,
-        campeonatoActual.value.partida_actual || 1
+        campeonatoActual.value.partida_actual
       )
+
       if (resultados) {
+        // Si hay resultados existentes, cargarlos en el formulario
         formData.value = {
           pareja1: {
             RP: resultados.pareja1.RP,
@@ -257,7 +278,25 @@ const loadMesa = async () => {
             PG: resultados.pareja2.PG,
             GB: resultados.pareja2.GB,
             id_pareja: resultados.pareja2.id_pareja
-          } : { RP: 0, PP: 0, PG: 0, GB: 'A', id_pareja: 0 }
+          } : {
+            RP: 0,
+            PP: 0,
+            PG: 0,
+            GB: 'A',
+            id_pareja: 0
+          }
+        }
+      } else {
+        // Si no hay resultados, inicializar con los IDs de las parejas
+        formData.value = {
+          pareja1: {
+            ...formData.value.pareja1,
+            id_pareja: mesa.value.pareja1.id
+          },
+          pareja2: mesa.value.pareja2 ? {
+            ...formData.value.pareja2,
+            id_pareja: mesa.value.pareja2.id
+          } : formData.value.pareja2
         }
       }
     }
@@ -274,7 +313,7 @@ const handleSubmit = async () => {
     if (!campeonatoActual.value || !mesa.value) return
 
     // Validar antes de enviar
-    if (!validarYCalcular()) return
+    if (!calcularResultados()) return
 
     const resultado = {
       mesa_id: mesa.value.id,
