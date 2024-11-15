@@ -19,6 +19,7 @@ export interface Mesa {
   id: number;
   numero: number;
   campeonato_id: number;
+  partida: number;
   pareja1_id: number;
   pareja2_id?: number;
   tieneResultado?: boolean;

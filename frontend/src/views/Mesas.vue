@@ -22,7 +22,7 @@
         <div v-else-if="error" class="text-red-500 text-center py-4">
           {{ error }}
         </div>
-        <div v-else-if="!parejasMesas.length" class="text-center py-4 text-gray-500">
+        <div v-else-if="!parejasOrdenadas.length" class="text-center py-4 text-gray-500">
           No hay mesas asignadas
         </div>
         <div v-else class="overflow-hidden">
@@ -30,7 +30,7 @@
             <thead class="bg-gray-50">
               <tr>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Número Pareja
+                  Número
                 </th>
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Nombre
@@ -38,13 +38,13 @@
                 <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Club
                 </th>
-                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider pr-6">
+                <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Mesa
                 </th>
               </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
-              <tr v-for="pareja in parejasVisibles" :key="pareja.id">
+              <tr v-for="pareja in parejasOrdenadas" :key="pareja.id">
                 <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                   {{ pareja.numero }}
                 </td>
@@ -54,8 +54,8 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {{ pareja.club || 'Sin club' }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right pr-6">
-                  {{ pareja.mesa_numero }}
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                  {{ pareja.mesa }}
                 </td>
               </tr>
             </tbody>
@@ -70,64 +70,59 @@
 import { ref, onMounted, computed } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useMesaStore } from '@/stores/mesa'
-import type { Campeonato } from '@/types'
-
-interface ParejaConMesa {
-  id: number
-  numero: number
-  nombre: string
-  club?: string
-  mesa_numero: number
-}
+import { usePartidaStore } from '@/stores/partida'
+import type { Mesa, Campeonato, Pareja } from '@/types'
 
 const campeonatoStore = useCampeonatoStore()
 const mesaStore = useMesaStore()
+const partidaStore = usePartidaStore()
 
 const isLoading = ref(true)
 const error = ref('')
-const parejasMesas = ref<ParejaConMesa[]>([])
-const currentIndex = ref(0)
-const intervalId = ref<number | null>(null)
-
+const mesas = ref<Mesa[]>([])
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
-const parejasVisibles = computed(() => {
-  const start = currentIndex.value
-  const end = start + 20
-  return parejasMesas.value.slice(start, end)
+// Computed para obtener todas las parejas ordenadas con su mesa asignada
+const parejasOrdenadas = computed(() => {
+  const parejas: Array<Pareja & { mesa?: number }> = []
+  
+  mesas.value.forEach(mesa => {
+    if (mesa.pareja1) {
+      parejas.push({
+        ...mesa.pareja1,
+        mesa: mesa.numero
+      })
+    }
+    if (mesa.pareja2) {
+      parejas.push({
+        ...mesa.pareja2,
+        mesa: mesa.numero
+      })
+    }
+  })
+
+  return parejas.sort((a, b) => (a.numero || 0) - (b.numero || 0))
+})
+
+onMounted(async () => {
+  if (campeonatoActual.value) {
+    await loadMesas()
+  }
 })
 
 const loadMesas = async () => {
   try {
     isLoading.value = true
     if (campeonatoActual.value) {
-      const response = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+      const mesasResponse = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
       
-      // Transformar la respuesta en un array de parejas con su mesa asignada
-      const parejas: ParejaConMesa[] = []
-      response.forEach((mesa: any) => {
-        if (mesa.pareja1) {
-          parejas.push({
-            id: mesa.pareja1.id,
-            numero: mesa.pareja1.numero,
-            nombre: mesa.pareja1.nombre,
-            club: mesa.pareja1.club,
-            mesa_numero: mesa.numero
-          })
-        }
-        if (mesa.pareja2) {
-          parejas.push({
-            id: mesa.pareja2.id,
-            numero: mesa.pareja2.numero,
-            nombre: mesa.pareja2.nombre,
-            club: mesa.pareja2.club,
-            mesa_numero: mesa.numero
-          })
-        }
-      })
-      
-      // Ordenar por número de pareja
-      parejasMesas.value = parejas.sort((a, b) => a.numero - b.numero)
+      if (!mesasResponse || mesasResponse.length === 0) {
+        await partidaStore.sortearParejas(campeonatoActual.value.id)
+        const nuevasMesas = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+        mesas.value = nuevasMesas
+      } else {
+        mesas.value = mesasResponse
+      }
     }
   } catch (e) {
     console.error('Error al cargar mesas:', e)
@@ -135,33 +130,5 @@ const loadMesas = async () => {
   } finally {
     isLoading.value = false
   }
-}
-
-const startRotation = () => {
-  intervalId.value = window.setInterval(() => {
-    currentIndex.value = (currentIndex.value + 20) % parejasMesas.value.length
-    if (currentIndex.value === 0) {
-      // Si volvemos al inicio, esperamos un ciclo adicional
-      setTimeout(() => {
-        currentIndex.value = 20
-      }, 10000)
-    }
-  }, 10000)
-}
-
-onMounted(async () => {
-  await loadMesas()
-  if (parejasMesas.value.length > 20) {
-    startRotation()
-  }
-})
-
-// Limpiar el intervalo cuando el componente se desmonta
-if (typeof window !== 'undefined') {
-  window.addEventListener('beforeunload', () => {
-    if (intervalId.value) {
-      clearInterval(intervalId.value)
-    }
-  })
 }
 </script> 

@@ -80,64 +80,71 @@ import { ref, onMounted, computed } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useMesaStore } from '@/stores/mesa'
 import { useRouter } from 'vue-router'
-
-interface Pareja {
-  id: number
-  numero: number
-  nombre: string
-}
-
-interface Mesa {
-  id: number
-  numero: number
-  pareja1: Pareja | null
-  pareja2: Pareja | null
-  tieneResultado: boolean
-}
+import { usePartidaStore } from '@/stores/partida'
+import type { Campeonato, Mesa } from '@/types'
+import type { CampeonatoStore } from '@/types/store'
 
 const router = useRouter()
-const campeonatoStore = useCampeonatoStore()
+const campeonatoStore = useCampeonatoStore() as CampeonatoStore
 const mesaStore = useMesaStore()
+const partidaStore = usePartidaStore()
 
 const isLoading = ref(true)
 const error = ref('')
 const mesas = ref<Mesa[]>([])
+const campeonatoActual = ref<Campeonato | null>(null)
 
-const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
-
-const mesasOrdenadas = computed(() => {
-  return [...mesas.value].sort((a, b) => a.numero - b.numero)
-})
-
-const loadMesas = async () => {
+const loadResultados = async () => {
   try {
     isLoading.value = true
     if (campeonatoActual.value) {
-      const response = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
-      // Transformar la respuesta al formato que necesitamos
-      mesas.value = response.map((mesa: any) => ({
-        id: mesa.id,
-        numero: mesa.numero,
-        pareja1: mesa.pareja1 ? {
-          id: mesa.pareja1.id,
-          numero: mesa.pareja1.numero,
-          nombre: mesa.pareja1.nombre
-        } : null,
-        pareja2: mesa.pareja2 ? {
-          id: mesa.pareja2.id,
-          numero: mesa.pareja2.numero,
-          nombre: mesa.pareja2.nombre
-        } : null,
-        tieneResultado: mesa.tieneResultado || false
-      }))
+      const mesasResponse = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+      mesas.value = mesasResponse
     }
   } catch (e) {
-    console.error('Error al cargar mesas:', e)
-    error.value = 'Error al cargar las mesas'
+    console.error('Error al cargar resultados:', e)
+    error.value = 'Error al cargar los resultados'
   } finally {
     isLoading.value = false
   }
 }
+
+onMounted(async () => {
+  const camp = campeonatoStore.getCurrentCampeonato()
+  if (camp) {
+    campeonatoActual.value = camp
+    await loadResultados()
+  }
+})
+
+const cerrarPartida = async () => {
+  try {
+    if (!campeonatoActual.value) return
+
+    const campeonatoActualizado = {
+      ...campeonatoActual.value,
+      partida_actual: (campeonatoActual.value.partida_actual || 0) + 1
+    }
+
+    await campeonatoStore.updateCampeonato(
+      campeonatoActual.value.id,
+      campeonatoActualizado
+    )
+
+    await partidaStore.sortearParejas(campeonatoActual.value.id)
+
+    campeonatoActual.value = campeonatoActualizado
+    await campeonatoStore.setCampeonatoActual(campeonatoActualizado)
+
+    router.push('/mesas')
+  } catch (error) {
+    console.error('Error al cerrar partida:', error)
+  }
+}
+
+const mesasOrdenadas = computed(() => {
+  return [...mesas.value].sort((a, b) => a.numero - b.numero)
+})
 
 const registrarResultado = (mesa: Mesa) => {
   router.push(`/partidas/resultado/${mesa.id}`)
@@ -145,24 +152,5 @@ const registrarResultado = (mesa: Mesa) => {
 
 const todasMesasRegistradas = computed(() => {
   return mesas.value.length > 0 && mesas.value.every(mesa => mesa.tieneResultado)
-})
-
-const cerrarPartida = async () => {
-  try {
-    if (!campeonatoActual.value) return
-
-    await mesaStore.cerrarPartida(campeonatoActual.value.id)
-    const nuevoCampeonato = await campeonatoStore.loadCampeonatoActual()
-    if (nuevoCampeonato !== null) {
-      campeonatoActual.value = nuevoCampeonato
-      await loadMesas()
-    }
-  } catch (error) {
-    console.error('Error al cerrar partida:', error)
-  }
-}
-
-onMounted(async () => {
-  await loadMesas()
 })
 </script> 

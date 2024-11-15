@@ -12,24 +12,24 @@
           </p>
         </div>
         <div class="flex gap-4">
-          <!-- Botón de Cerrar Inscripción/Volver Atrás -->
           <button
-            v-if="campeonatoActual"
-            @click="handleInscripcionButton"
-            :class="[
-              inscripcionCerrada 
-                ? 'bg-yellow-600 hover:bg-yellow-700' 
-                : 'bg-red-600 hover:bg-red-700',
-              'inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white focus:outline-none focus:ring-2 focus:ring-offset-2'
-            ]"
+            v-if="!inscripcionCerrada"
+            @click="cerrarInscripcion"
+            class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md"
           >
-            {{ inscripcionCerrada ? 'Volver Atrás' : 'Cerrar Inscripción' }}
+            Cerrar Inscripción
           </button>
-          <!-- Botón de Nueva Pareja -->
           <button
+            v-else
+            @click="volverAtras"
+            class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md"
+          >
+            Volver Atrás
+          </button>
+          <button
+            v-if="!inscripcionCerrada"
             @click="showNewParejaModal = true"
-            :disabled="inscripcionCerrada"
-            class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            class="bg-primary-600 hover:bg-primary-700 text-white px-4 py-2 rounded-md"
           >
             Nueva Pareja
           </button>
@@ -133,6 +133,7 @@
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useParejaStore } from '@/stores/pareja'
 import NuevaPareja from '@/components/Parejas/NuevaPareja.vue'
@@ -140,6 +141,7 @@ import EditarPareja from '@/components/Parejas/EditarPareja.vue'
 import type { Campeonato, Pareja } from '@/types'
 import { useMesaStore } from '@/stores/mesa'
 
+const router = useRouter()
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
 const mesaStore = useMesaStore()
@@ -149,7 +151,9 @@ const showNewParejaModal = ref(false)
 const isLoading = ref(true)
 const error = ref('')
 const parejaEnEdicion = ref<Pareja | null>(null)
-const inscripcionCerrada = ref(false)
+const inscripcionCerrada = computed(() => {
+  return campeonatoActual.value?.partida_actual > 0
+})
 
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
@@ -253,5 +257,13 @@ const handleInscripcionButton = async () => {
     console.error('Error al manejar inscripción:', error)
     alert('Error al realizar el sorteo de mesas')
   }
+}
+
+const cerrarInscripcion = () => {
+  inscripcionCerrada.value = true
+}
+
+const volverAtras = () => {
+  router.push('/campeonatos')
 }
 </script> 
