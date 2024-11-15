@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.models.mesa import Mesa
 from app.models.pareja import Pareja
+from app.models.campeonato import Campeonato
 import random
 
 router = APIRouter()
@@ -14,6 +15,11 @@ def get_partidas(db: Session = Depends(get_db)):
 @router.post("/{campeonato_id}/sorteo-inicial")
 def realizar_sorteo_inicial(campeonato_id: int, db: Session = Depends(get_db)):
     try:
+        # Verificar que el campeonato existe
+        campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
+        if not campeonato:
+            raise HTTPException(status_code=404, detail="Campeonato no encontrado")
+
         # Obtener solo las parejas activas
         parejas = db.query(Pareja).filter(
             Pareja.campeonato_id == campeonato_id,
@@ -47,13 +53,16 @@ def realizar_sorteo_inicial(campeonato_id: int, db: Session = Depends(get_db)):
         # Guardar las mesas en la base de datos
         for mesa in mesas:
             db.add(mesa)
+
+        # Actualizar el número de partida en el campeonato
+        campeonato.partida_actual = 1
         
         db.commit()
         return {"message": "Sorteo realizado con éxito", "mesas": len(mesas)}
             
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=500, detail=str(e)) 
+        raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{campeonato_id}/mesas")
 def eliminar_mesas(campeonato_id: int, db: Session = Depends(get_db)):
