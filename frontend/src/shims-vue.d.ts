@@ -52,25 +52,36 @@ declare module '@/types' {
     campeonato_id: number
     // ... otros campos
   }
+
+  export interface Mesa {
+    id: number
+    numero: number
+    campeonato_id: number
+    pareja1_id: number
+    pareja2_id?: number
+    tieneResultado?: boolean
+    pareja1?: Pareja
+    pareja2?: Pareja
+  }
 }
 
 declare module '@/stores/campeonato' {
   export function useCampeonatoStore(): {
-    campeonatoActual: import('@/types').Campeonato | null
-    campeonatos: import('@/types').Campeonato[]
-    getCurrentCampeonato: () => import('@/types').Campeonato | null
-    fetchCampeonatos: () => Promise<import('@/types').Campeonato[]>
-    createCampeonato: (data: Partial<import('@/types').Campeonato>) => Promise<import('@/types').Campeonato>
-    updateCampeonato: (id: number, data: Partial<import('@/types').Campeonato>) => Promise<import('@/types').Campeonato>
-    setCampeonatoActual: (campeonato: import('@/types').Campeonato | null) => void
-    loadCampeonatoActual: () => Promise<void>
+    campeonatoActual: Campeonato | null
+    campeonatos: Campeonato[]
+    getCurrentCampeonato: () => Campeonato | null
+    loadCampeonatoActual: () => Promise<Campeonato | null>
+    fetchCampeonatos: () => Promise<Campeonato[]>
+    createCampeonato: (data: Partial<Campeonato>) => Promise<Campeonato>
+    updateCampeonato: (id: number, data: Partial<Campeonato>) => Promise<Campeonato>
+    setCampeonatoActual: (campeonato: Campeonato | null) => void
   }
 }
 
 declare module '@/stores/pareja' {
   export function useParejaStore(): {
-    fetchParejasCampeonato: (id: number) => Promise<import('@/types').Pareja[]>
-    createPareja: (data: any) => Promise<import('@/types').Pareja>
+    fetchParejasCampeonato: (id: number) => Promise<Pareja[]>
+    createPareja: (data: any) => Promise<Pareja>
     toggleParejaEstado: (id: number, estado: boolean) => Promise<void>
     fetchJugadoresPareja: (id: number) => Promise<any[]>
     updatePareja: (id: number, data: any) => Promise<void>
@@ -80,11 +91,12 @@ declare module '@/stores/pareja' {
 
 declare module '@/stores/mesa' {
   export function useMesaStore(): {
-    mesas: any[]
+    mesas: Mesa[]
     sortearMesas: (campeonatoId: number) => Promise<any>
     eliminarMesas: (campeonatoId: number) => Promise<any>
-    getMesasAsignadas: (campeonatoId: number) => Promise<any>
-    getMesa: (mesaId: number) => Promise<any>
+    getMesasAsignadas: (campeonatoId: number) => Promise<Mesa[]>
+    getMesa: (mesaId: number) => Promise<Mesa>
+    cerrarPartida: (campeonatoId: number) => Promise<any>
   }
 }
 
@@ -93,6 +105,6 @@ declare module '@/stores/resultado' {
     resultados: any[]
     saveResultado: (resultado: any) => Promise<any>
     getResultadoMesa: (mesaId: number, partida: number) => Promise<any>
-    fetchResultados: (campeonatoId: number) => Promise<import('@/types').Resultado[]>
+    fetchResultados: (campeonatoId: number) => Promise<Resultado[]>
   }
 }

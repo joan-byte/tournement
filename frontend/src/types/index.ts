@@ -18,9 +18,12 @@ export interface Pareja {
 export interface Mesa {
   id: number;
   numero: number;
+  campeonato_id: number;
   pareja1_id: number;
   pareja2_id?: number;
-  campeonato_id: number;
+  tieneResultado?: boolean;
+  pareja1?: Pareja;
+  pareja2?: Pareja;
 }
 
 export interface ResultadoBase {

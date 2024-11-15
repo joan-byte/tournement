@@ -10,77 +10,79 @@
             Partida {{ campeonatoActual?.partida_actual || 1 }}
           </span>
         </div>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">
-          {{ campeonatoActual?.nombre }}
-        </p>
       </div>
 
       <div class="border-t border-gray-200">
-        <div v-if="!campeonatoActual" class="text-center py-4 text-gray-500">
-          Seleccione un campeonato para ver el ranking
+        <div v-if="isLoading" class="text-center py-4">
+          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
+        </div>
+        <div v-else-if="error" class="text-red-500 text-center py-4">
+          {{ error }}
+        </div>
+        <div v-else-if="!resultados.length" class="text-center py-4 text-gray-500">
+          No hay resultados disponibles
         </div>
         <div v-else>
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
-              <thead class="bg-gray-50">
-                <tr>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Pos.
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    GB
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    PG
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    PP
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Partida
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nº
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Nombre
-                  </th>
-                  <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Club
-                  </th>
-                </tr>
-              </thead>
-              <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="resultado in parejasVisibles" :key="resultado.pareja_id" 
-                    :class="getPosicionClass(resultado.posicion)">
-                  <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                    {{ resultado.posicion }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    {{ resultado.GB }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {{ resultado.PG }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {{ resultado.PP }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {{ resultado.ultima_partida }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
-                    {{ resultado.numero }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm">
-                    {{ resultado.nombre }}
-                  </td>
-                  <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {{ resultado.club || 'Sin club' }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th scope="col" class="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Pos.
+                </th>
+                <th scope="col" class="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Part.
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  GB
+                </th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PG
+                </th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  PP
+                </th>
+                <th scope="col" class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nº
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Nombre
+                </th>
+                <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Club
+                </th>
+              </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+              <tr v-for="resultado in resultados" :key="resultado.pareja_id" 
+                  :class="getPosicionClass(resultado.posicion)">
+                <td class="px-3 py-4 whitespace-nowrap text-sm font-medium">
+                  {{ resultado.posicion }}
+                </td>
+                <td class="px-2 py-4 whitespace-nowrap text-sm text-center font-medium"
+                    :class="getPartidaClass(resultado.ultima_partida)">
+                  {{ resultado.ultima_partida }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  {{ resultado.GB }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  {{ resultado.PG }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  {{ resultado.PP }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-center">
+                  {{ resultado.numero }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  {{ resultado.nombre }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {{ resultado.club || 'Sin club' }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -88,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useResultadoStore } from '@/stores/resultado'
 import type { Campeonato } from '@/types'
@@ -97,33 +99,10 @@ import type { RankingResultado } from '@/types/resultado'
 const campeonatoStore = useCampeonatoStore()
 const resultadoStore = useResultadoStore()
 
-const resultados = ref<RankingResultado[]>([])
 const campeonatoActual = ref<Campeonato | null>(null)
-const currentPage = ref(0)
-const intervalId = ref<number | null>(null)
-const checkIntervalId = ref<number | null>(null)
-const ITEMS_PER_PAGE = 20
-const ROTATION_INTERVAL = 10000 // 10 segundos
-
-const parejasVisibles = computed(() => {
-  const start = currentPage.value * ITEMS_PER_PAGE
-  const end = start + ITEMS_PER_PAGE
-  return resultados.value.slice(start, end)
-})
-
-const startRotation = () => {
-  if (resultados.value.length <= ITEMS_PER_PAGE) return
-
-  // Limpiar intervalo existente si hay uno
-  if (intervalId.value) {
-    clearInterval(intervalId.value)
-  }
-
-  intervalId.value = window.setInterval(() => {
-    const totalPages = Math.ceil(resultados.value.length / ITEMS_PER_PAGE)
-    currentPage.value = (currentPage.value + 1) % totalPages
-  }, ROTATION_INTERVAL)
-}
+const resultados = ref<RankingResultado[]>([])
+const isLoading = ref(true)
+const error = ref('')
 
 const getPosicionClass = (posicion: number) => {
   switch (posicion) {
@@ -138,39 +117,46 @@ const getPosicionClass = (posicion: number) => {
   }
 }
 
-const loadResultados = async () => {
-  if (campeonatoActual.value) {
-    resultados.value = await resultadoStore.fetchResultados(campeonatoActual.value.id)
-    currentPage.value = 0
-    startRotation()
+const getPartidaClass = (partida: number) => {
+  if (!campeonatoActual.value) return ''
+  
+  if (partida === campeonatoActual.value.partida_actual) {
+    return 'text-green-700 font-bold'
   }
+  if (partida < campeonatoActual.value.partida_actual) {
+    return 'text-red-700 font-semibold'
+  }
+  return ''
 }
 
-const updateCampeonato = async () => {
-  const newCampeonato = campeonatoStore.getCurrentCampeonato()
-  if (newCampeonato?.id !== campeonatoActual.value?.id) {
-    campeonatoActual.value = newCampeonato
-    if (newCampeonato) {
-      await loadResultados()
+const loadResultados = async () => {
+  try {
+    if (campeonatoActual.value) {
+      resultados.value = await resultadoStore.fetchResultados(campeonatoActual.value.id)
     }
+  } catch (e) {
+    console.error('Error al cargar resultados:', e)
+    error.value = 'Error al cargar los resultados'
+  } finally {
+    isLoading.value = false
   }
 }
 
 onMounted(async () => {
-  await updateCampeonato()
-  startRotation()
-  
-  // Iniciar verificación periódica de cambios en el campeonato
-  checkIntervalId.value = window.setInterval(updateCampeonato, 5000)
+  const camp = campeonatoStore.getCurrentCampeonato()
+  if (camp) {
+    campeonatoActual.value = camp
+    await loadResultados()
+  }
 })
+</script>
 
-onUnmounted(() => {
-  // Limpiar todos los intervalos
-  if (intervalId.value) {
-    clearInterval(intervalId.value)
-  }
-  if (checkIntervalId.value) {
-    clearInterval(checkIntervalId.value)
-  }
-})
-</script> 
+<style scoped>
+.text-green-700 {
+  color: #15803d !important;
+}
+
+.text-red-700 {
+  color: #b91c1c !important;
+}
+</style> 

@@ -10,9 +10,14 @@
             Partida {{ campeonatoActual?.partida_actual || 1 }}
           </span>
         </div>
-        <p class="mt-1 max-w-2xl text-sm text-gray-500">
-          {{ campeonatoActual?.nombre }}
-        </p>
+        <div v-if="todasMesasRegistradas" class="mt-4">
+          <button
+            @click="cerrarPartida"
+            class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+          >
+            Cerrar Partida
+          </button>
+        </div>
       </div>
 
       <div class="border-t border-gray-200">
@@ -136,6 +141,25 @@ const loadMesas = async () => {
 
 const registrarResultado = (mesa: Mesa) => {
   router.push(`/partidas/resultado/${mesa.id}`)
+}
+
+const todasMesasRegistradas = computed(() => {
+  return mesas.value.length > 0 && mesas.value.every(mesa => mesa.tieneResultado)
+})
+
+const cerrarPartida = async () => {
+  try {
+    if (!campeonatoActual.value) return
+
+    await mesaStore.cerrarPartida(campeonatoActual.value.id)
+    const nuevoCampeonato = await campeonatoStore.loadCampeonatoActual()
+    if (nuevoCampeonato !== null) {
+      campeonatoActual.value = nuevoCampeonato
+      await loadMesas()
+    }
+  } catch (error) {
+    console.error('Error al cerrar partida:', error)
+  }
 }
 
 onMounted(async () => {
