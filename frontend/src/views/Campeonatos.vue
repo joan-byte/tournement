@@ -1,10 +1,13 @@
 <template>
   <div class="container mx-auto p-4">
-    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+    <!-- Panel superior con botones -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
       <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
-        <h3 class="text-lg leading-6 font-medium text-gray-900">
-          Campeonatos
-        </h3>
+        <div>
+          <h3 class="text-lg leading-6 font-medium text-gray-900">
+            Campeonatos
+          </h3>
+        </div>
         <button
           @click="showNewCampeonatoModal = true"
           class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
@@ -12,63 +15,67 @@
           Nuevo Campeonato
         </button>
       </div>
-      <div class="border-t border-gray-200">
-        <div v-if="isLoading" class="text-center py-4">
-          <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
-        </div>
-        <div v-else-if="error" class="text-red-500 text-center py-4">
-          {{ error }}
-        </div>
-        <div v-else-if="!campeonatosArray.length" class="text-center py-4 text-gray-500">
-          No hay campeonatos registrados
-        </div>
-        <ul v-else role="list" class="divide-y divide-gray-200">
-          <li
-            v-for="campeonato in campeonatosArray"
-            :key="campeonato.id"
-            class="px-4 py-4 sm:px-6 hover:bg-gray-50 cursor-pointer"
-            @click="seleccionarCampeonato(campeonato)"
-          >
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="text-sm font-medium text-primary-600 truncate">
-                  {{ campeonato.nombre }}
-                </p>
-                <div class="mt-2 sm:flex sm:justify-between">
-                  <div class="sm:flex">
-                    <p class="flex items-center text-sm text-gray-500">
-                      <span>Inicio: {{ formatearFecha(campeonato.fecha_inicio) }}</span>
-                    </p>
-                    <p class="mt-2 flex items-center text-sm text-gray-500 sm:mt-0 sm:ml-6">
-                      <span>Duración: {{ campeonato.dias_duracion }} días</span>
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div class="flex flex-col items-end">
-                <span
-                  :class="[
-                    campeonato.partida_actual > 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800',
-                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium'
-                  ]"
-                >
-                  {{ campeonato.partida_actual > 0 ? 'En curso' : 'No iniciado' }}
-                </span>
-                <p class="mt-2 text-sm text-gray-500">
-                  Partida: {{ campeonato.partida_actual }}/{{ campeonato.numero_partidas }}
-                </p>
-              </div>
-            </div>
-          </li>
-        </ul>
+    </div>
+
+    <!-- Lista de campeonatos -->
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+      <div v-if="isLoading" class="p-4 text-center">
+        <p>Cargando campeonatos...</p>
       </div>
+      <div v-else-if="error" class="p-4 text-center text-red-600">
+        {{ error }}
+      </div>
+      <div v-else-if="campeonatos.length === 0" class="p-4 text-center">
+        <p>No hay campeonatos registrados</p>
+      </div>
+      <ul v-else role="list" class="divide-y divide-gray-200">
+        <li v-for="campeonato in campeonatos" :key="campeonato.id" class="px-4 py-4 sm:px-6">
+          <div class="flex items-center justify-between">
+            <div class="flex-1 min-w-0">
+              <p 
+                class="text-sm font-medium text-primary-600 hover:text-primary-700 cursor-pointer"
+                @click="seleccionarCampeonato(campeonato)"
+              >
+                {{ campeonato.nombre }}
+              </p>
+              <p class="text-sm text-gray-500">
+                Fecha inicio: {{ formatearFecha(campeonato.fecha_inicio) }}
+              </p>
+              <p class="text-sm text-gray-500">
+                {{ 
+                  campeonato.partida_actual === 0 
+                    ? 'No iniciado' 
+                    : `Partida ${campeonato.partida_actual} de ${campeonato.numero_partidas}` 
+                }}
+              </p>
+            </div>
+            <div class="flex gap-2">
+              <button
+                @click.stop="modificarCampeonato(campeonato)"
+                class="inline-flex items-center px-3 py-1.5 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              >
+                Modificar
+              </button>
+            </div>
+          </div>
+        </li>
+      </ul>
     </div>
 
     <!-- Modal de nuevo campeonato -->
-    <NuevoCampeonato
-      :show="showNewCampeonatoModal"
+    <nuevo-campeonato
+      v-if="showNewCampeonatoModal"
       @close="showNewCampeonatoModal = false"
       @created="onCampeonatoCreated"
+    />
+
+    <!-- Modal de modificación -->
+    <ModificarCampeonato
+      v-if="showModificarModal"
+      :campeonato="campeonatoSeleccionado!"
+      @close="closeModificarModal"
+      @updated="onCampeonatoUpdated"
+      @deleted="onCampeonatoDeleted"
     />
   </div>
 </template>
@@ -78,15 +85,19 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import NuevoCampeonato from '@/components/Campeonatos/NuevoCampeonato.vue'
+import ModificarCampeonato from '@/components/Campeonatos/ModificarCampeonato.vue'
 import type { Campeonato } from '@/types'
+import type { CampeonatoStore } from '@/types/store'
 
 const router = useRouter()
-const campeonatoStore = useCampeonatoStore()
+const campeonatoStore = useCampeonatoStore() as CampeonatoStore
 
 const campeonatos = ref<Campeonato[]>([])
 const showNewCampeonatoModal = ref(false)
 const isLoading = ref(true)
 const error = ref('')
+const showModificarModal = ref(false)
+const campeonatoSeleccionado = ref<Campeonato | null>(null)
 
 // Computed property para asegurar que siempre trabajamos con un array
 const campeonatosArray = computed(() => {
@@ -144,5 +155,29 @@ const seleccionarCampeonato = async (campeonato: Campeonato) => {
 const onCampeonatoCreated = async () => {
   showNewCampeonatoModal.value = false
   await loadCampeonatos()
+}
+
+const modificarCampeonato = (campeonato: Campeonato) => {
+  console.log('Modificando campeonato:', campeonato) // Para debug
+  campeonatoSeleccionado.value = { ...campeonato } // Crear una copia del objeto
+  showModificarModal.value = true
+}
+
+const closeModificarModal = () => {
+  console.log('Cerrando modal') // Para debug
+  showModificarModal.value = false
+  campeonatoSeleccionado.value = null
+}
+
+const onCampeonatoUpdated = async () => {
+  console.log('Campeonato actualizado') // Para debug
+  await loadCampeonatos()
+  closeModificarModal()
+}
+
+const onCampeonatoDeleted = async () => {
+  console.log('Campeonato eliminado') // Para debug
+  await loadCampeonatos()
+  closeModificarModal()
 }
 </script> 
