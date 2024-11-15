@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" v-if="show">
+  <div v-if="show" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity">
     <div class="fixed inset-0 z-10 overflow-y-auto">
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
         <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
@@ -107,7 +107,9 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
+import { XMarkIcon } from '@heroicons/vue/24/outline'
 import { useCampeonatoStore } from '@/stores/campeonato'
+import type { CampeonatoStore } from '@/types/store'
 
 const props = defineProps<{
   show: boolean
@@ -118,7 +120,7 @@ const emit = defineEmits<{
   (e: 'created'): void
 }>()
 
-const campeonatoStore = useCampeonatoStore()
+const campeonatoStore = useCampeonatoStore() as CampeonatoStore
 
 const formData = ref({
   nombre: '',
@@ -131,9 +133,6 @@ const formData = ref({
 const handleSubmit = async () => {
   try {
     await campeonatoStore.createCampeonato(formData.value)
-    emit('created')
-    emit('close')
-    // Resetear el formulario
     formData.value = {
       nombre: '',
       fecha_inicio: '',
@@ -141,6 +140,7 @@ const handleSubmit = async () => {
       numero_partidas: 1,
       grupo_b: false
     }
+    emit('created')
   } catch (error) {
     console.error('Error al crear campeonato:', error)
   }

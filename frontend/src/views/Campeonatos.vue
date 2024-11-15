@@ -65,6 +65,7 @@
     <!-- Modal de nuevo campeonato -->
     <nuevo-campeonato
       v-if="showNewCampeonatoModal"
+      :show="showNewCampeonatoModal"
       @close="showNewCampeonatoModal = false"
       @created="onCampeonatoCreated"
     />
