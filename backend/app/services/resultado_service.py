@@ -75,45 +75,35 @@ class ResultadoService:
             pareja2=resultados[1] if len(resultados) > 1 else None
         )
 
-    def get_ranking_campeonato(self, campeonato_id: int) -> List[Dict[str, Any]]:
-        # Obtener los resultados agrupados por pareja
+    def obtener_ranking(self, campeonato_id: int) -> List[Dict]:
         resultados = self.db.query(
             Resultado.id_pareja,
             Pareja.nombre.label('nombre_pareja'),
             Pareja.club,
             func.sum(Resultado.PG).label('total_PG'),
             func.sum(Resultado.PP).label('total_PP'),
-            func.max(case(
-                (Resultado.GB == 'B', 'B'),
-                else_='A'
-            )).label('GB')
+            Resultado.GB
         ).join(
-            Pareja,
-            Resultado.id_pareja == Pareja.id
+            Pareja, Resultado.id_pareja == Pareja.id
         ).filter(
             Resultado.campeonato_id == campeonato_id
         ).group_by(
             Resultado.id_pareja,
             Pareja.nombre,
-            Pareja.club
+            Pareja.club,
+            Resultado.GB
         ).all()
 
-        # Convertir los resultados a diccionarios y ordenarlos
-        ranking = [
-            {
-                'pareja_id': r.id_pareja,
-                'nombre_pareja': r.nombre_pareja,
-                'club': r.club,
-                'PG': r.total_PG,
-                'PP': r.total_PP,
-                'GB': r.GB
-            }
-            for r in resultados
-        ]
+        ranking = [{
+            'pareja_id': r.id_pareja,
+            'nombre_pareja': r.nombre_pareja,
+            'club': r.club,
+            'PG': r.total_PG,
+            'PP': r.total_PP,
+            'GB': r.GB
+        } for r in resultados]
         
-        # Ordenar por PG (descendente) y PP (ascendente)
-        ranking.sort(key=lambda x: (-x['PG'], x['PP']))
-        return ranking
+        return sorted(ranking, key=lambda x: (-x['PG'], x['PP']))
 
     def ajustar_pg(
         self,

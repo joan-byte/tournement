@@ -78,39 +78,39 @@ export const useCampeonatoStore = defineStore('campeonato', {
 
     async setCampeonatoActual(campeonato: Campeonato | null) {
       try {
-        localStorage.removeItem('campeonato_id')
-        localStorage.removeItem('campeonato_nombre')
-        localStorage.removeItem('currentCampeonato')
-        localStorage.removeItem('parejasCampeonato')
-        this.campeonatoActual = null
-        this.parejasCampeonatoActual = []
+        await this.resetState()
 
         if (campeonato) {
-          const [campeonatoResponse, parejasResponse] = await Promise.all([
+          const [campeonatoData, parejasData] = await Promise.all([
             axios.get(`/api/campeonatos/${campeonato.id}`),
             axios.get(`/api/parejas/campeonato/${campeonato.id}`)
           ])
 
-          const campeonatoActualizado = campeonatoResponse.data
-          this.parejasCampeonatoActual = parejasResponse.data
+          const campeonatoActualizado = campeonatoData.data
+          this.parejasCampeonatoActual = parejasData.data
 
-          localStorage.setItem('campeonato_id', campeonatoActualizado.id.toString())
-          localStorage.setItem('campeonato_nombre', campeonatoActualizado.nombre)
-          localStorage.setItem('currentCampeonato', JSON.stringify(campeonatoActualizado))
-          localStorage.setItem('parejasCampeonato', JSON.stringify(this.parejasCampeonatoActual))
+          const storageData = {
+            'campeonato_id': campeonatoActualizado.id.toString(),
+            'campeonato_nombre': campeonatoActualizado.nombre,
+            'currentCampeonato': JSON.stringify(campeonatoActualizado),
+            'parejasCampeonato': JSON.stringify(this.parejasCampeonatoActual)
+          }
+          Object.entries(storageData).forEach(([key, value]) => localStorage.setItem(key, value))
 
           this.campeonatoActual = campeonatoActualizado
         }
       } catch (error) {
         console.error('Error setting current campeonato:', error)
-        localStorage.removeItem('campeonato_id')
-        localStorage.removeItem('campeonato_nombre')
-        localStorage.removeItem('currentCampeonato')
-        localStorage.removeItem('parejasCampeonato')
-        this.campeonatoActual = null
-        this.parejasCampeonatoActual = []
+        await this.resetState()
         throw error
       }
+    },
+
+    resetState() {
+      const keysToRemove = ['campeonato_id', 'campeonato_nombre', 'currentCampeonato', 'parejasCampeonato']
+      keysToRemove.forEach(key => localStorage.removeItem(key))
+      this.campeonatoActual = null
+      this.parejasCampeonatoActual = []
     },
 
     async loadCampeonatoActual() {

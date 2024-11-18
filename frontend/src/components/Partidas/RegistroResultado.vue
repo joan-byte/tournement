@@ -312,33 +312,29 @@ const handleSubmit = async () => {
   try {
     if (!campeonatoActual.value || !mesa.value) return
 
-    // Validar antes de enviar
     if (!calcularResultados()) return
 
-    const resultado = {
-      mesa_id: mesa.value.id,
-      campeonato_id: campeonatoActual.value.id,
+    const resultadoBase = {
+      campeonato_id: mesa.value.campeonato_id,
       partida: campeonatoActual.value.partida_actual,
-      resultados: {
-        pareja1: {
-          id_pareja: mesa.value.pareja1.id,
-          RP: formData.value.pareja1.RP,
-          PP: formData.value.pareja1.PP,
-          PG: formData.value.pareja1.PG,
-          GB: formData.value.pareja1.GB
-        },
-        pareja2: mesa.value.pareja2 ? {
-          id_pareja: mesa.value.pareja2.id,
-          RP: formData.value.pareja2.RP,
-          PP: formData.value.pareja2.PP,
-          PG: formData.value.pareja2.PG,
-          GB: formData.value.pareja2.GB
-        } : null
-      }
+      mesa_id: mesa.value.id
+    }
+
+    const resultado = {
+      pareja1: {
+        ...resultadoBase,
+        ...formData.value.pareja1,
+        id_pareja: mesa.value.pareja1.id
+      },
+      pareja2: mesa.value.pareja2 ? {
+        ...resultadoBase,
+        ...formData.value.pareja2,
+        id_pareja: mesa.value.pareja2.id
+      } : undefined
     }
 
     await resultadoStore.saveResultado(resultado)
-    router.push('/mesas/resultados')
+    router.push('/partidas')
   } catch (e) {
     console.error('Error al guardar resultado:', e)
     error.value = 'Error al guardar el resultado'

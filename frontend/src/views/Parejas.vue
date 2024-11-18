@@ -185,23 +185,18 @@ const hayResultados = computed(async () => {
 const loadParejas = async () => {
   try {
     isLoading.value = true
-    const currentCampeonato = campeonatoStore.getCurrentCampeonato()
-    if (currentCampeonato) {
-      const response = await parejaStore.fetchParejasCampeonato(currentCampeonato.id)
-      parejas.value = Array.isArray(response) ? response : []
+    if (campeonatoActual.value) {
+      const [parejasData, inscripcionData] = await Promise.all([
+        parejaStore.fetchParejasCampeonato(campeonatoActual.value.id),
+        mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+      ])
       
-      // Verificar si hay mesas asignadas
-      try {
-        const mesasResponse = await mesaStore.getMesasAsignadas(currentCampeonato.id)
-        inscripcionEstado.value = mesasResponse && mesasResponse.length > 0
-      } catch (error) {
-        console.error('Error al verificar mesas:', error)
-      }
+      parejas.value = parejasData
+      inscripcionEstado.value = inscripcionData.length > 0
     }
   } catch (e) {
     console.error('Error al cargar parejas:', e)
     error.value = 'Error al cargar las parejas'
-    parejas.value = []
   } finally {
     isLoading.value = false
   }
