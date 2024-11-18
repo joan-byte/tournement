@@ -166,9 +166,6 @@ const finalizarCampeonato = async () => {
   try {
     if (!campeonatoActual.value) return
 
-    // Actualizar el estado del campeonato si es necesario
-    // Aquí podrías marcar el campeonato como finalizado si tienes ese campo
-
     // Redirigir al podium
     router.push('/podium')
   } catch (error) {

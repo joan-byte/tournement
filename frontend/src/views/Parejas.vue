@@ -253,38 +253,6 @@ const onParejaUpdated = async () => {
   await loadParejas()
 }
 
-const handleInscripcionButton = async () => {
-  try {
-    if (!campeonatoActual.value) return
-
-    if (!inscripcionEstado.value) {
-      // Verificar que hay suficientes parejas activas (mínimo 4)
-      const parejasActivas = parejas.value.filter(p => p.activa)
-      if (parejasActivas.length < 4) {
-        alert('Se necesitan al menos 4 parejas activas para iniciar el campeonato')
-        return
-      }
-
-      // Cerrar inscripción y realizar sorteo
-      await mesaStore.sortearMesas(campeonatoActual.value.id)
-      inscripcionEstado.value = true
-    } else {
-      // Volver atrás
-      await mesaStore.eliminarMesas(campeonatoActual.value.id)
-      inscripcionEstado.value = false
-    }
-    
-    await loadParejas()
-  } catch (error) {
-    console.error('Error al manejar inscripción:', error)
-    alert('Error al realizar el sorteo de mesas')
-  }
-}
-
-const cerrarInscripcion = () => {
-  inscripcionEstado.value = true
-}
-
 const volverAtras = () => {
   router.push('/campeonatos')
 }
