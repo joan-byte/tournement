@@ -38,6 +38,16 @@ export const useResultadoStore = defineStore('resultado', {
         console.error('Error obteniendo resultados:', error)
         throw error
       }
+    },
+
+    async getResultadosCampeonato(campeonatoId: number) {
+      try {
+        const response = await axios.get(`/api/resultados/campeonato/${campeonatoId}`)
+        return response.data
+      } catch (error) {
+        console.error('Error obteniendo resultados del campeonato:', error)
+        throw error
+      }
     }
   }
 }) 

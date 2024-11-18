@@ -22,7 +22,13 @@
           <button
             v-else
             @click="volverAtras"
-            class="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md"
+            :disabled="hayResultados"
+            :class="[
+              hayResultados 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-yellow-600 hover:bg-yellow-700',
+              'text-white px-4 py-2 rounded-md'
+            ]"
           >
             Volver Atrás
           </button>
@@ -140,11 +146,13 @@ import NuevaPareja from '@/components/Parejas/NuevaPareja.vue'
 import EditarPareja from '@/components/Parejas/EditarPareja.vue'
 import type { Campeonato, Pareja } from '@/types'
 import { useMesaStore } from '@/stores/mesa'
+import { useResultadoStore } from '@/stores/resultado'
 
 const router = useRouter()
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
 const mesaStore = useMesaStore()
+const resultadoStore = useResultadoStore()
 
 const parejas = ref<Pareja[]>([])
 const showNewParejaModal = ref(false)
@@ -159,6 +167,18 @@ const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 // Computed para verificar si la inscripción está cerrada
 const inscripcionCerrada = computed(() => {
   return campeonatoActual.value?.partida_actual > 0
+})
+
+// Computed para verificar si hay resultados registrados
+const hayResultados = computed(async () => {
+  if (!campeonatoActual.value) return false
+  try {
+    const resultados = await resultadoStore.fetchResultados(campeonatoActual.value.id)
+    return resultados && resultados.length > 0
+  } catch (error) {
+    console.error('Error al verificar resultados:', error)
+    return false
+  }
 })
 
 // Definir loadParejas antes de usarlo en cualquier otro lugar
