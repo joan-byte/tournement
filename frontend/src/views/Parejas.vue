@@ -22,9 +22,9 @@
           <button
             v-else
             @click="volverAtras"
-            :disabled="hayResultados"
+            :disabled="hayResultados.value"
             :class="[
-              hayResultados 
+              hayResultados.value 
                 ? 'bg-gray-400 cursor-not-allowed' 
                 : 'bg-yellow-600 hover:bg-yellow-700',
               'text-white px-4 py-2 rounded-md'
@@ -147,12 +147,14 @@ import EditarPareja from '@/components/Parejas/EditarPareja.vue'
 import type { Campeonato, Pareja } from '@/types'
 import { useMesaStore } from '@/stores/mesa'
 import { useResultadoStore } from '@/stores/resultado'
+import { usePartidaStore } from '@/stores/partida'
 
 const router = useRouter()
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
 const mesaStore = useMesaStore()
 const resultadoStore = useResultadoStore()
+const partidaStore = usePartidaStore()
 
 const parejas = ref<Pareja[]>([])
 const showNewParejaModal = ref(false)
@@ -160,6 +162,7 @@ const isLoading = ref(true)
 const error = ref('')
 const parejaEnEdicion = ref<Pareja | null>(null)
 const inscripcionEstado = ref(false)
+const hayResultados = ref(false)
 
 // Computed para obtener el campeonato actual
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
@@ -169,30 +172,22 @@ const inscripcionCerrada = computed(() => {
   return campeonatoActual.value?.partida_actual > 0
 })
 
-// Computed para verificar si hay resultados registrados
-const hayResultados = computed(async () => {
-  if (!campeonatoActual.value) return false
-  try {
-    const resultados = await resultadoStore.fetchResultados(campeonatoActual.value.id)
-    return resultados && resultados.length > 0
-  } catch (error) {
-    console.error('Error al verificar resultados:', error)
-    return false
-  }
-})
-
 // Definir loadParejas antes de usarlo en cualquier otro lugar
 const loadParejas = async () => {
   try {
     isLoading.value = true
     if (campeonatoActual.value) {
-      const [parejasData, inscripcionData] = await Promise.all([
+      const [parejasData, inscripcionData, resultados] = await Promise.all([
         parejaStore.fetchParejasCampeonato(campeonatoActual.value.id),
-        mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+        mesaStore.getMesasAsignadas(campeonatoActual.value.id),
+        resultadoStore.fetchResultados(campeonatoActual.value.id)
       ])
       
       parejas.value = parejasData
       inscripcionEstado.value = inscripcionData.length > 0
+      
+      // Verificar si hay resultados reales (con puntos)
+      hayResultados.value = resultados && resultados.some(r => r.PG > 0 || r.PP !== 0)
     }
   } catch (e) {
     console.error('Error al cargar parejas:', e)
@@ -253,7 +248,71 @@ const onParejaUpdated = async () => {
   await loadParejas()
 }
 
-const volverAtras = () => {
-  router.push('/campeonatos')
+const volverAtras = async () => {
+  try {
+    if (!campeonatoActual.value) return
+    
+    if (hayResultados.value) {
+      alert('No se puede volver atrás porque ya hay resultados registrados')
+      return
+    }
+
+    // Confirmar la acción
+    if (!confirm('¿Está seguro de volver atrás? Se eliminarán las asignaciones de mesas actuales.')) {
+      return
+    }
+
+    // Eliminar asignaciones de mesas
+    await mesaStore.eliminarMesas(campeonatoActual.value.id)
+    
+    // Actualizar campeonato (partida_actual = 0)
+    await campeonatoStore.updateCampeonato(campeonatoActual.value.id, {
+      partida_actual: 0
+    })
+
+    // Recargar datos
+    await loadParejas()
+
+    // Redirigir a la página de mesas
+    router.push('/mesas/asignacion')
+  } catch (error) {
+    console.error('Error al volver atrás:', error)
+    alert('Error al volver atrás. Por favor, inténtelo de nuevo.')
+  }
+}
+
+const cerrarInscripcion = async () => {
+  try {
+    if (!campeonatoActual.value) return
+
+    // Agregar confirmación
+    if (!confirm('¿Está seguro de cerrar la inscripción? Esta acción no se puede deshacer.')) {
+      return
+    }
+
+    // Verificar mínimo de parejas activas
+    const parejasActivas = parejas.value.filter(p => p.activa)
+    if (parejasActivas.length < 4) {
+      alert('Se necesitan al menos 4 parejas activas para iniciar el campeonato')
+      return
+    }
+
+    // Eliminar cualquier mesa existente primero
+    await mesaStore.eliminarMesas(campeonatoActual.value.id)
+
+    // Primero actualizar el campeonato a partida 1
+    await campeonatoStore.updateCampeonato(campeonatoActual.value.id, {
+      partida_actual: 1
+    })
+
+    // Luego realizar el sorteo inicial de parejas
+    await partidaStore.sortearParejas(campeonatoActual.value.id)
+
+    // Redirigir a la página de mesas (sin recargar datos aquí)
+    router.push('/mesas/asignacion')
+  } catch (error) {
+    console.error('Error al cerrar inscripción:', error)
+    alert('Error al cerrar la inscripción. Por favor, inténtelo de nuevo.')
+  }
 }
 </script> 

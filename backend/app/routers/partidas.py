@@ -4,6 +4,7 @@ from app.db.session import get_db
 from app.models import Campeonato, Pareja, Mesa, Resultado
 from typing import List
 from sqlalchemy import and_
+import random
 
 router = APIRouter()
 
@@ -25,6 +26,10 @@ async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
                 Mesa.partida == campeonato.partida_actual
             )
         ).all()
+
+        # Si no hay mesas, devolver lista vacía
+        if not mesas:
+            return []
 
         # Cargar las parejas relacionadas
         for mesa in mesas:
@@ -64,9 +69,9 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
             Pareja.activa == True
         ).all()
 
-        # 3. Ordenar parejas según el ranking
+        # 3. Ordenar parejas
         if resultados:
-            # Ordenar según los resultados existentes
+            # Si hay resultados previos, ordenar según ranking
             parejas_ordenadas = sorted(
                 parejas,
                 key=lambda p: next(
@@ -76,8 +81,9 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
                 reverse=True
             )
         else:
-            # Para la primera partida, usar el orden actual
-            parejas_ordenadas = parejas
+            # Para la primera partida, hacer sorteo aleatorio
+            parejas_ordenadas = list(parejas)  # Crear una copia de la lista
+            random.shuffle(parejas_ordenadas)  # Mezclar aleatoriamente
 
         # 4. Emparejar las parejas (1 vs 2, 3 vs 4, etc.)
         parejas_emparejadas = []
@@ -92,12 +98,12 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
         if not campeonato:
             raise HTTPException(status_code=404, detail="Campeonato no encontrado")
 
-        # 6. Crear las mesas
+        # 6. Crear las mesas (siempre con partida = 1 al cerrar inscripción)
         for mesa_num, (pareja1, pareja2) in enumerate(parejas_emparejadas, 1):
             mesa = Mesa(
                 numero=mesa_num,
                 campeonato_id=campeonato_id,
-                partida=campeonato.partida_actual,
+                partida=1,
                 pareja1_id=pareja1.id,
                 pareja2_id=pareja2.id if pareja2 else None
             )
@@ -112,3 +118,17 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al sortear parejas: {str(e)}"
         )
+
+@router.delete("/{campeonato_id}/mesas")
+async def eliminar_mesas_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
+    try:
+        # Eliminar todas las mesas del campeonato sin importar la partida
+        db.query(Mesa).filter(
+            Mesa.campeonato_id == campeonato_id
+        ).delete()
+        
+        db.commit()
+        return {"message": "Mesas eliminadas correctamente"}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))

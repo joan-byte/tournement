@@ -30,16 +30,6 @@ export const useMesaStore = defineStore('mesa', {
       }
     },
 
-    async sortearMesas(campeonatoId: number) {
-      try {
-        const response = await axios.post(`/api/partidas/sortear-parejas/${campeonatoId}`)
-        return response.data
-      } catch (error) {
-        console.error('Error al sortear mesas:', error)
-        throw error
-      }
-    },
-
     async eliminarMesas(campeonatoId: number) {
       try {
         const response = await axios.delete(`/api/partidas/${campeonatoId}/mesas`)
