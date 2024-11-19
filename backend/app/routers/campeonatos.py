@@ -8,8 +8,21 @@ from app.models.mesa import Mesa
 from app.models.resultado import Resultado
 from app.schemas.campeonato import CampeonatoCreate, CampeonatoUpdate
 from datetime import date
+from sqlalchemy import text, func
+from contextlib import contextmanager
+from sqlalchemy.exc import OperationalError
 
 router = APIRouter()
+
+@contextmanager
+def transaction_lock(db: Session):
+    """Ejecuta operaciones en una transacción bloqueada"""
+    try:
+        # Bloquear la tabla para evitar operaciones concurrentes
+        db.execute(text("LOCK TABLE campeonatos IN EXCLUSIVE MODE"))
+        yield
+    finally:
+        db.commit()
 
 @router.get("/")
 def get_campeonatos(db: Session = Depends(get_db)):
@@ -80,42 +93,38 @@ def update_campeonato(
 
 @router.delete("/{campeonato_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
-    """
-    Elimina un campeonato y todos sus datos relacionados
-    """
     try:
-        # Primero verificamos que el campeonato existe
-        campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
-        if not campeonato:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Campeonato no encontrado"
-            )
+        with transaction_lock(db):
+            # Verificar que el campeonato existe
+            campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
+            if not campeonato:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Campeonato no encontrado"
+                )
 
-        # Eliminamos todos los datos relacionados en orden
-        # 1. Resultados
-        db.query(Resultado).filter(Resultado.campeonato_id == campeonato_id).delete(synchronize_session=False)
-        
-        # 2. Mesas
-        db.query(Mesa).filter(Mesa.campeonato_id == campeonato_id).delete(synchronize_session=False)
-        
-        # 3. Jugadores
-        db.query(Jugador).filter(Jugador.campeonato_id == campeonato_id).delete(synchronize_session=False)
-        
-        # 4. Parejas
-        db.query(Pareja).filter(Pareja.campeonato_id == campeonato_id).delete(synchronize_session=False)
-        
-        # 5. Finalmente, el campeonato
-        db.query(Campeonato).filter(Campeonato.id == campeonato_id).delete(synchronize_session=False)
-        
-        # Confirmamos los cambios
-        db.commit()
+            # Eliminar datos relacionados en orden
+            db.query(Resultado).filter(Resultado.campeonato_id == campeonato_id).delete(synchronize_session=False)
+            db.query(Mesa).filter(Mesa.campeonato_id == campeonato_id).delete(synchronize_session=False)
+            db.query(Jugador).filter(Jugador.campeonato_id == campeonato_id).delete(synchronize_session=False)
+            db.query(Pareja).filter(Pareja.campeonato_id == campeonato_id).delete(synchronize_session=False)
+            db.query(Campeonato).filter(Campeonato.id == campeonato_id).delete(synchronize_session=False)
+
+            # Verificar si quedan campeonatos de forma segura
+            remaining_count = db.query(func.count(Campeonato.id)).scalar()
+            
+            if remaining_count == 0:
+                try:
+                    db.execute(text("ALTER SEQUENCE campeonatos_id_seq RESTART WITH 1"))
+                except OperationalError as e:
+                    print(f"No se pudo reiniciar la secuencia de IDs: {str(e)}")
+                    # No lanzamos el error para que la operación principal se complete
         
         return {"message": "Campeonato eliminado correctamente"}
         
     except Exception as e:
         db.rollback()
-        print(f"Error al eliminar campeonato: {str(e)}")  # Para debugging
+        print(f"Error al eliminar campeonato: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error al eliminar el campeonato: {str(e)}"
