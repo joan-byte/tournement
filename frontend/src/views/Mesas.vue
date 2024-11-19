@@ -70,38 +70,42 @@
 import { ref, onMounted, computed } from 'vue'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import { useMesaStore } from '@/stores/mesa'
-import { usePartidaStore } from '@/stores/partida'
-import type { Mesa, Campeonato, Pareja } from '@/types'
+import type { Mesa } from '@/types'
 
 const campeonatoStore = useCampeonatoStore()
 const mesaStore = useMesaStore()
-const partidaStore = usePartidaStore()
 
 const isLoading = ref(true)
 const error = ref('')
 const mesas = ref<Mesa[]>([])
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
-// Computed para obtener todas las parejas ordenadas con su mesa asignada
+// Computed para obtener las parejas ordenadas con su mesa asignada
 const parejasOrdenadas = computed(() => {
-  const parejas: Array<Pareja & { mesa?: number }> = []
+  const parejas: any[] = []
   
   mesas.value.forEach(mesa => {
     if (mesa.pareja1) {
       parejas.push({
-        ...mesa.pareja1,
+        id: mesa.pareja1.id,
+        numero: mesa.pareja1.numero,
+        nombre: mesa.pareja1.nombre,
+        club: mesa.pareja1.club,
         mesa: mesa.numero
       })
     }
     if (mesa.pareja2) {
       parejas.push({
-        ...mesa.pareja2,
+        id: mesa.pareja2.id,
+        numero: mesa.pareja2.numero,
+        nombre: mesa.pareja2.nombre,
+        club: mesa.pareja2.club,
         mesa: mesa.numero
       })
     }
   })
 
-  return parejas.sort((a, b) => (a.numero || 0) - (b.numero || 0))
+  return parejas.sort((a, b) => a.numero - b.numero)
 })
 
 onMounted(async () => {
@@ -115,14 +119,7 @@ const loadMesas = async () => {
     isLoading.value = true
     if (campeonatoActual.value) {
       const mesasResponse = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
-      
-      if (!mesasResponse || mesasResponse.length === 0) {
-        await partidaStore.sortearParejas(campeonatoActual.value.id)
-        const nuevasMesas = await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
-        mesas.value = nuevasMesas
-      } else {
-        mesas.value = mesasResponse
-      }
+      mesas.value = mesasResponse || []
     }
   } catch (e) {
     console.error('Error al cargar mesas:', e)

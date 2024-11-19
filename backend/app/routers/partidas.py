@@ -25,31 +25,53 @@ async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
                 Mesa.campeonato_id == campeonato_id,
                 Mesa.partida == campeonato.partida_actual
             )
-        ).all()
+        ).order_by(Mesa.numero).all()
 
         # Si no hay mesas, devolver lista vacía
         if not mesas:
             return []
 
         # Cargar las parejas relacionadas
+        mesas_con_parejas = []
         for mesa in mesas:
-            mesa.pareja1 = db.query(Pareja).filter(Pareja.id == mesa.pareja1_id).first()
-            if mesa.pareja2_id:
-                mesa.pareja2 = db.query(Pareja).filter(Pareja.id == mesa.pareja2_id).first()
-
-            # Verificar si la mesa tiene resultados
-            resultado = db.query(Resultado).filter(
-                and_(
-                    Resultado.mesa_id == mesa.id,
-                    Resultado.partida == campeonato.partida_actual
-                )
+            # Verificar si hay resultados para esta mesa
+            resultado_existente = db.query(Resultado).filter(
+                Resultado.mesa_id == mesa.id,
+                Resultado.partida == campeonato.partida_actual
             ).first()
-            mesa.tieneResultado = resultado is not None
 
-        return mesas
+            # Obtener pareja1
+            pareja1 = db.query(Pareja).filter(Pareja.id == mesa.pareja1_id).first()
+            # Obtener pareja2 si existe
+            pareja2 = None
+            if mesa.pareja2_id:
+                pareja2 = db.query(Pareja).filter(Pareja.id == mesa.pareja2_id).first()
+
+            # Crear diccionario con toda la información
+            mesa_dict = {
+                "id": mesa.id,
+                "numero": mesa.numero,
+                "campeonato_id": mesa.campeonato_id,
+                "partida": mesa.partida,
+                "tieneResultado": resultado_existente is not None,
+                "pareja1": {
+                    "id": pareja1.id,
+                    "numero": pareja1.numero,
+                    "nombre": pareja1.nombre,
+                    "club": pareja1.club
+                } if pareja1 else None,
+                "pareja2": {
+                    "id": pareja2.id,
+                    "numero": pareja2.numero,
+                    "nombre": pareja2.nombre,
+                    "club": pareja2.club
+                } if pareja2 else None
+            }
+            mesas_con_parejas.append(mesa_dict)
+
+        return mesas_con_parejas
 
     except Exception as e:
-        print(f"Error obteniendo mesas: {str(e)}")
         raise HTTPException(
             status_code=500,
             detail=f"Error al obtener las mesas: {str(e)}"
@@ -58,20 +80,35 @@ async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
 @router.post("/sortear-parejas/{campeonato_id}")
 async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
     try:
-        # 1. Obtener el ranking actual
-        resultados = db.query(Resultado).filter(
-            Resultado.campeonato_id == campeonato_id
-        ).order_by(Resultado.PG.desc(), Resultado.PP.desc()).all()
+        # Obtener el campeonato
+        campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
+        if not campeonato:
+            raise HTTPException(status_code=404, detail="Campeonato no encontrado")
 
-        # 2. Obtener todas las parejas activas
+        # 1. Obtener todas las parejas activas
         parejas = db.query(Pareja).filter(
             Pareja.campeonato_id == campeonato_id,
             Pareja.activa == True
         ).all()
 
-        # 3. Ordenar parejas
-        if resultados:
-            # Si hay resultados previos, ordenar según ranking
+        # 2. Verificar si hay resultados previos para determinar si es la primera partida
+        resultados_previos = db.query(Resultado).filter(
+            Resultado.campeonato_id == campeonato_id,
+            (Resultado.PG != 0) | (Resultado.PP != 0) | (Resultado.RP != 0)
+        ).first()
+
+        # Si no hay resultados previos, hacer sorteo aleatorio
+        if not resultados_previos:
+            print("Primera partida: realizando sorteo aleatorio")
+            parejas_ordenadas = list(parejas)
+            random.shuffle(parejas_ordenadas)
+        else:
+            print("Partida posterior: ordenando por ranking")
+            # Para siguientes partidas, ordenar por ranking
+            resultados = db.query(Resultado).filter(
+                Resultado.campeonato_id == campeonato_id
+            ).order_by(Resultado.PG.desc(), Resultado.PP.desc()).all()
+            
             parejas_ordenadas = sorted(
                 parejas,
                 key=lambda p: next(
@@ -80,12 +117,8 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
                 ),
                 reverse=True
             )
-        else:
-            # Para la primera partida, hacer sorteo aleatorio
-            parejas_ordenadas = list(parejas)  # Crear una copia de la lista
-            random.shuffle(parejas_ordenadas)  # Mezclar aleatoriamente
 
-        # 4. Emparejar las parejas (1 vs 2, 3 vs 4, etc.)
+        # 3. Emparejar las parejas
         parejas_emparejadas = []
         for i in range(0, len(parejas_ordenadas), 2):
             if i + 1 < len(parejas_ordenadas):
@@ -93,17 +126,14 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
             else:
                 parejas_emparejadas.append((parejas_ordenadas[i], None))
 
-        # 5. Obtener la partida actual del campeonato
-        campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
-        if not campeonato:
-            raise HTTPException(status_code=404, detail="Campeonato no encontrado")
-
-        # 6. Crear las mesas (siempre con partida = 1 al cerrar inscripción)
+        # 4. Crear las mesas para la partida correspondiente
+        partida_destino = campeonato.partida_actual
+        
         for mesa_num, (pareja1, pareja2) in enumerate(parejas_emparejadas, 1):
             mesa = Mesa(
                 numero=mesa_num,
                 campeonato_id=campeonato_id,
-                partida=1,
+                partida=partida_destino,
                 pareja1_id=pareja1.id,
                 pareja2_id=pareja2.id if pareja2 else None
             )
@@ -122,13 +152,29 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
 @router.delete("/{campeonato_id}/mesas")
 async def eliminar_mesas_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
     try:
-        # Eliminar todas las mesas del campeonato sin importar la partida
-        db.query(Mesa).filter(
-            Mesa.campeonato_id == campeonato_id
-        ).delete()
+        # Primero obtener todas las mesas del campeonato
+        mesas = db.query(Mesa).filter(Mesa.campeonato_id == campeonato_id).all()
         
+        if not mesas:
+            return {"message": "No hay mesas para eliminar"}
+
+        # Eliminar cada mesa individualmente para asegurar que se eliminan todas
+        for mesa in mesas:
+            db.delete(mesa)
+        
+        # Hacer commit de los cambios
         db.commit()
+        
+        # Verificar que se eliminaron todas las mesas
+        mesas_restantes = db.query(Mesa).filter(Mesa.campeonato_id == campeonato_id).count()
+        if mesas_restantes > 0:
+            raise HTTPException(
+                status_code=500,
+                detail="No se pudieron eliminar todas las mesas"
+            )
+            
         return {"message": "Mesas eliminadas correctamente"}
     except Exception as e:
         db.rollback()
+        print(f"Error eliminando mesas: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))

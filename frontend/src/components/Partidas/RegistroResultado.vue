@@ -125,9 +125,10 @@
             </button>
             <button
               type="submit"
-              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+              class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white"
+              :class="tieneResultadoPrevio ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-primary-600 hover:bg-primary-700'"
             >
-              Guardar
+              {{ tieneResultadoPrevio ? 'Modificar' : 'Registrar' }}
             </button>
           </div>
         </form>
@@ -161,6 +162,14 @@ interface ResultadoPareja {
   PG: number
   GB: string
   id_pareja: number
+}
+
+// Definir la interfaz para los datos del resultado
+interface ResultadoData {
+  mesa_id: number
+  campeonato_id: number
+  pareja1: ResultadoPareja
+  pareja2?: ResultadoPareja  // Hacerlo opcional con ?
 }
 
 const formData = ref({
@@ -227,6 +236,26 @@ const calcularResultados = () => {
   return true
 }
 
+const tieneResultadoPrevio = ref(false)
+
+// Agregar función para verificar si hay resultados en la partida actual
+const verificarResultadosPartida = async () => {
+  try {
+    if (!campeonatoActual.value) return false
+
+    const resultados = await resultadoStore.fetchResultados(campeonatoActual.value.id)
+    
+    // Verificar si hay resultados para la partida actual
+    return resultados && resultados.some(r => 
+      r.partida === campeonatoActual.value?.partida_actual &&
+      (r.PG !== 0 || r.PP !== 0 || r.RP !== 0)
+    )
+  } catch (error) {
+    console.error('Error al verificar resultados:', error)
+    return false
+  }
+}
+
 const loadMesa = async () => {
   try {
     const mesaId = parseInt(route.params.mesaId as string)
@@ -235,32 +264,14 @@ const loadMesa = async () => {
       const mesaResponse = await mesaStore.getMesa(mesaId)
       mesa.value = mesaResponse
 
-      // Si es una mesa con una sola pareja, establecer valores predeterminados
-      if (mesa.value.pareja1 && !mesa.value.pareja2) {
-        formData.value = {
-          pareja1: {
-            RP: 150,
-            PP: 150,
-            PG: 1,
-            GB: 'A',
-            id_pareja: mesa.value.pareja1.id
-          },
-          pareja2: {
-            RP: 0,
-            PP: -150,
-            PG: 0,
-            GB: 'A',
-            id_pareja: 0
-          }
-        }
-        return
-      }
-
       // Cargar resultados existentes si los hay
       const resultados = await resultadoStore.getResultadoMesa(
         mesaId,
         campeonatoActual.value.partida_actual
       )
+
+      // Verificar si hay resultados para esta mesa o para cualquier otra en la partida actual
+      tieneResultadoPrevio.value = !!resultados || await verificarResultadosPartida()
 
       if (resultados) {
         // Si hay resultados existentes, cargarlos en el formulario
@@ -314,27 +325,25 @@ const handleSubmit = async () => {
 
     if (!calcularResultados()) return
 
-    const resultadoBase = {
+    const resultadoData: ResultadoData = {
+      mesa_id: mesa.value.id,
       campeonato_id: mesa.value.campeonato_id,
-      partida: campeonatoActual.value.partida_actual,
-      mesa_id: mesa.value.id
-    }
-
-    const resultado = {
       pareja1: {
-        ...resultadoBase,
         ...formData.value.pareja1,
         id_pareja: mesa.value.pareja1.id
-      },
-      pareja2: mesa.value.pareja2 ? {
-        ...resultadoBase,
-        ...formData.value.pareja2,
-        id_pareja: mesa.value.pareja2.id
-      } : undefined
+      }
     }
 
-    await resultadoStore.saveResultado(resultado)
-    router.push('/partidas')
+    // Solo incluir pareja2 si existe
+    if (mesa.value.pareja2) {
+      resultadoData.pareja2 = {
+        ...formData.value.pareja2,
+        id_pareja: mesa.value.pareja2.id
+      }
+    }
+
+    await resultadoStore.saveResultado(resultadoData)
+    router.push('/mesas/resultados')
   } catch (e) {
     console.error('Error al guardar resultado:', e)
     error.value = 'Error al guardar el resultado'

@@ -186,8 +186,11 @@ const loadParejas = async () => {
       parejas.value = parejasData
       inscripcionEstado.value = inscripcionData.length > 0
       
-      // Verificar si hay resultados reales (con puntos)
-      hayResultados.value = resultados && resultados.some(r => r.PG > 0 || r.PP !== 0)
+      // Verificar si hay resultados en la base de datos
+      hayResultados.value = resultados && resultados.length > 0 && resultados.some(r => {
+        // Considerar que hay resultados solo si hay valores diferentes a 0
+        return r.PG !== 0 || r.PP !== 0 || r.RP !== 0
+      })
     }
   } catch (e) {
     console.error('Error al cargar parejas:', e)
@@ -265,16 +268,21 @@ const volverAtras = async () => {
     // Eliminar asignaciones de mesas
     await mesaStore.eliminarMesas(campeonatoActual.value.id)
     
-    // Actualizar campeonato (partida_actual = 0)
+    // Actualizar campeonato (partida_actual = -1)
     await campeonatoStore.updateCampeonato(campeonatoActual.value.id, {
-      partida_actual: 0
+      partida_actual: -1
     })
 
     // Recargar datos
     await loadParejas()
 
-    // Redirigir a la página de mesas
-    router.push('/mesas/asignacion')
+    // Redirigir a la página de parejas
+    router.push('/parejas')
+
+    // Refrescar la página después de un breve delay para asegurar que la redirección se complete
+    setTimeout(() => {
+      window.location.reload()
+    }, 100)
   } catch (error) {
     console.error('Error al volver atrás:', error)
     alert('Error al volver atrás. Por favor, inténtelo de nuevo.')
@@ -300,15 +308,21 @@ const cerrarInscripcion = async () => {
     // Eliminar cualquier mesa existente primero
     await mesaStore.eliminarMesas(campeonatoActual.value.id)
 
-    // Primero actualizar el campeonato a partida 1
+    // IMPORTANTE: Primero actualizar el campeonato a partida 1
     await campeonatoStore.updateCampeonato(campeonatoActual.value.id, {
       partida_actual: 1
     })
 
+    // Esperar a que el campeonato se actualice
+    await campeonatoStore.loadCampeonatoActual()
+
     // Luego realizar el sorteo inicial de parejas
     await partidaStore.sortearParejas(campeonatoActual.value.id)
 
-    // Redirigir a la página de mesas (sin recargar datos aquí)
+    // Cargar las mesas asignadas antes de redirigir
+    await mesaStore.getMesasAsignadas(campeonatoActual.value.id)
+
+    // Redirigir a la página de mesas
     router.push('/mesas/asignacion')
   } catch (error) {
     console.error('Error al cerrar inscripción:', error)

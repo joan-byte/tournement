@@ -23,44 +23,46 @@ def get_ranking(campeonato_id: int, db: Session = Depends(get_db)):
         if not parejas:
             return []
 
+        # Obtener solo los resultados con valores reales (no iniciales)
+        resultados = db.query(Resultado).filter(
+            Resultado.campeonato_id == campeonato_id,
+            # Asegurarse de que al menos uno de los valores sea diferente de 0
+            (Resultado.PG != 0) | (Resultado.PP != 0) | (Resultado.RP != 0)
+        ).all()
+
+        # Si no hay resultados reales, devolver lista vacía
+        if not resultados:
+            return []
+
         ranking = []
         for pareja in parejas:
-            # Obtener todos los resultados de la pareja en este campeonato
-            resultados = db.query(Resultado).filter(
-                Resultado.campeonato_id == campeonato_id,
-                Resultado.id_pareja == pareja.id
-            ).all()
+            # Filtrar resultados de esta pareja
+            resultados_pareja = [r for r in resultados if r.id_pareja == pareja.id]
+            
+            if resultados_pareja:  # Solo incluir parejas con resultados reales
+                # Calcular sumatorios
+                total_pg = sum(1 for r in resultados_pareja if r.PG == 1)
+                total_pp = sum(r.PP for r in resultados_pareja if r.PP > 0)
+                ultima_partida = max([r.partida for r in resultados_pareja])
 
-            # Calcular sumatorios
-            total_pg = sum(1 for r in resultados if r.PG == 1)
-            total_pp = sum(r.PP for r in resultados if r.PP > 0)
-            ultima_partida = max([r.partida for r in resultados]) if resultados else 1
+                # Crear item del ranking
+                ranking_item = RankingResultado(
+                    posicion=0,
+                    GB='A',
+                    PG=total_pg,
+                    PP=total_pp,
+                    ultima_partida=ultima_partida,
+                    numero=pareja.numero,
+                    nombre=pareja.nombre,
+                    pareja_id=pareja.id,
+                    club=pareja.club
+                )
+                ranking.append(ranking_item)
 
-            # Crear item del ranking
-            ranking_item = RankingResultado(
-                posicion=0,  # Se actualizará después
-                GB='A',  # Por ahora siempre es A
-                PG=total_pg,
-                PP=total_pp,
-                ultima_partida=ultima_partida,
-                numero=pareja.numero,
-                nombre=pareja.nombre,
-                pareja_id=pareja.id,
-                club=pareja.club
-            )
-            ranking.append(ranking_item)
+        # Ordenar según los criterios
+        ranking.sort(key=lambda x: (x.GB, -x.PG, -x.PP))
 
-        # Ordenar según los criterios especificados:
-        # 1. GB ascendente
-        # 2. PG descendente
-        # 3. PP descendente
-        ranking.sort(key=lambda x: (
-            x.GB,      # GB ascendente
-            -x.PG,     # PG descendente
-            -x.PP      # PP descendente
-        ))
-
-        # Actualizar posiciones después de ordenar
+        # Actualizar posiciones
         for idx, item in enumerate(ranking, 1):
             item.posicion = idx
 
@@ -103,7 +105,7 @@ def get_resultado_mesa(mesa_id: int, partida: int, db: Session = Depends(get_db)
 async def save_resultado(data: Dict[str, Any], db: Session = Depends(get_db)):
     try:
         # Validar datos requeridos
-        if not all(key in data for key in ['mesa_id', 'campeonato_id', 'resultados']):
+        if not all(key in data for key in ['mesa_id', 'campeonato_id', 'pareja1']):
             raise HTTPException(status_code=400, detail="Faltan campos requeridos")
 
         # Verificar que la mesa existe
@@ -129,25 +131,25 @@ async def save_resultado(data: Dict[str, Any], db: Session = Depends(get_db)):
             mesa_id=data['mesa_id'],
             campeonato_id=data['campeonato_id'],
             partida=campeonato.partida_actual,
-            id_pareja=data['resultados']['pareja1']['id_pareja'],
-            GB='A',  # Por ahora siempre es 'A'
-            RP=data['resultados']['pareja1']['RP'],
-            PP=data['resultados']['pareja1']['PP'],
-            PG=data['resultados']['pareja1']['PG']
+            id_pareja=mesa.pareja1_id,
+            GB='A',
+            RP=data['pareja1']['RP'],
+            PP=data['pareja1']['PP'],
+            PG=data['pareja1']['PG']
         )
         db.add(resultado1)
 
-        # Guardar resultado de pareja 2 si existe
-        if data['resultados'].get('pareja2') and mesa.pareja2_id:
+        # Solo guardar resultado de pareja 2 si existe en la mesa y en los datos
+        if mesa.pareja2_id and 'pareja2' in data:
             resultado2 = Resultado(
                 mesa_id=data['mesa_id'],
                 campeonato_id=data['campeonato_id'],
                 partida=campeonato.partida_actual,
-                id_pareja=data['resultados']['pareja2']['id_pareja'],
-                GB='A',  # Por ahora siempre es 'A'
-                RP=data['resultados']['pareja2']['RP'],
-                PP=data['resultados']['pareja2']['PP'],
-                PG=data['resultados']['pareja2']['PG']
+                id_pareja=mesa.pareja2_id,
+                GB='A',
+                RP=data['pareja2']['RP'],
+                PP=data['pareja2']['PP'],
+                PG=data['pareja2']['PG']
             )
             db.add(resultado2)
 

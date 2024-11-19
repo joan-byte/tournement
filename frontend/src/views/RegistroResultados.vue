@@ -32,39 +32,22 @@
           No hay mesas asignadas
         </div>
         <div v-else class="divide-y divide-gray-200">
-          <div v-for="mesa in mesasOrdenadas" :key="mesa.numero" class="px-4 py-4">
-            <div class="flex items-center justify-between">
-              <div class="flex-1">
-                <div class="flex items-center space-x-4">
-                  <!-- Número de mesa -->
-                  <span class="inline-flex items-center justify-center h-10 w-10 rounded-full bg-gray-100 text-gray-900 text-xl font-bold">
-                    {{ mesa.numero }}
-                  </span>
-                  <!-- Información de las parejas -->
-                  <div class="flex-1 grid grid-cols-2 gap-4">
-                    <div class="flex items-center space-x-2">
-                      <span class="text-sm font-medium text-gray-900">{{ mesa.pareja1?.numero }}</span>
-                      <span class="text-sm text-gray-500">{{ mesa.pareja1?.nombre }}</span>
-                    </div>
-                    <div v-if="mesa.pareja2" class="flex items-center space-x-2">
-                      <span class="text-sm font-medium text-gray-900">{{ mesa.pareja2?.numero }}</span>
-                      <span class="text-sm text-gray-500">{{ mesa.pareja2?.nombre }}</span>
-                    </div>
-                    <div v-else class="text-sm text-gray-500 italic">
-                      Descansa
-                    </div>
-                  </div>
-                </div>
+          <div v-for="mesa in mesas" :key="mesa.id" class="mb-4">
+            <div class="flex justify-between items-center p-4 bg-white rounded-lg shadow">
+              <div class="grid grid-cols-12 gap-4 items-center flex-grow mr-8">
+                <span class="font-medium col-span-2">Mesa {{ mesa.numero }}</span>
+                <span class="text-gray-600 col-span-4 text-left">
+                  {{ mesa.pareja1?.numero }} - {{ mesa.pareja1?.nombre }}
+                </span>
+                <span v-if="mesa.pareja2" class="text-gray-500 col-span-2 text-center">vs</span>
+                <span v-if="mesa.pareja2" class="text-gray-600 col-span-4 text-left">
+                  {{ mesa.pareja2.numero }} - {{ mesa.pareja2.nombre }}
+                </span>
               </div>
-              <!-- Botón de registro/modificación -->
               <button
                 @click="registrarResultado(mesa)"
-                :class="[
-                  mesa.tieneResultado 
-                    ? 'bg-yellow-600 hover:bg-yellow-700' 
-                    : 'bg-primary-600 hover:bg-primary-700',
-                  'inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500'
-                ]"
+                class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white"
+                :class="mesa.tieneResultado ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-primary-600 hover:bg-primary-700'"
               >
                 {{ mesa.tieneResultado ? 'Modificar' : 'Registrar' }}
               </button>
