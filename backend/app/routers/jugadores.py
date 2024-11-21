@@ -7,14 +7,34 @@ from typing import List
 from app.schemas.jugador import JugadorCreate, ParejaCreate, JugadorResponse, ParejaUpdate
 from sqlalchemy import func
 
+# Creación de un enrutador para manejar las rutas relacionadas con jugadores y parejas
 router = APIRouter()
 
 @router.get("/jugadores")
 def get_jugadores(db: Session = Depends(get_db)):
+    """
+    Obtiene todos los jugadores de la base de datos.
+    
+    Args:
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Lista de todos los jugadores
+    """
     return db.query(Jugador).all()
 
 @router.get("/jugadores/{jugador_id}")
 def get_jugador(jugador_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene un jugador específico por su ID.
+    
+    Args:
+        jugador_id: ID del jugador a obtener
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        El jugador solicitado o un error 404 si no se encuentra
+    """
     jugador = db.query(Jugador).filter(Jugador.id == jugador_id).first()
     if not jugador:
         raise HTTPException(status_code=404, detail="Jugador no encontrado")
@@ -22,10 +42,29 @@ def get_jugador(jugador_id: int, db: Session = Depends(get_db)):
 
 @router.get("/parejas")
 def get_parejas(db: Session = Depends(get_db)):
+    """
+    Obtiene todas las parejas de la base de datos.
+    
+    Args:
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Lista de todas las parejas
+    """
     return db.query(Pareja).all()
 
 @router.get("/parejas/campeonato/{campeonato_id}")
 def get_parejas_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene todas las parejas de un campeonato específico.
+    
+    Args:
+        campeonato_id: ID del campeonato
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Lista de parejas del campeonato o una lista vacía si no hay parejas
+    """
     parejas = db.query(Pareja).filter(
         Pareja.campeonato_id == campeonato_id
     ).order_by(Pareja.numero.desc()).all()
@@ -37,6 +76,16 @@ def get_parejas_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
 
 @router.get("/parejas/{pareja_id}")
 def get_pareja(pareja_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene una pareja específica por su ID.
+    
+    Args:
+        pareja_id: ID de la pareja a obtener
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        La pareja solicitada o un error 404 si no se encuentra
+    """
     pareja = db.query(Pareja).filter(Pareja.id == pareja_id).first()
     if not pareja:
         raise HTTPException(status_code=404, detail="Pareja no encontrada")
@@ -44,6 +93,16 @@ def get_pareja(pareja_id: int, db: Session = Depends(get_db)):
 
 @router.get("/parejas/{pareja_id}/jugadores")
 def get_jugadores_pareja(pareja_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene los jugadores de una pareja específica.
+    
+    Args:
+        pareja_id: ID de la pareja
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Lista de jugadores de la pareja o un error 404 si no se encuentran jugadores
+    """
     # Obtener la pareja con sus jugadores
     pareja = db.query(Pareja).options(
         joinedload(Pareja.jugadores)
@@ -79,6 +138,16 @@ def get_jugadores_pareja(pareja_id: int, db: Session = Depends(get_db)):
 
 @router.post("/parejas")
 async def create_pareja(pareja_data: ParejaCreate, db: Session = Depends(get_db)):
+    """
+    Crea una nueva pareja en la base de datos.
+    
+    Args:
+        pareja_data: Datos de la pareja a crear
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        La pareja creada
+    """
     try:
         # Obtener el último número de pareja para este campeonato
         ultimo_numero = db.query(func.max(Pareja.numero))\
@@ -129,6 +198,17 @@ async def update_pareja(
     pareja_data: ParejaUpdate,
     db: Session = Depends(get_db)
 ):
+    """
+    Actualiza una pareja existente.
+    
+    Args:
+        pareja_id: ID de la pareja a actualizar
+        pareja_data: Datos actualizados de la pareja
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        La pareja actualizada o un error 404 si no se encuentra
+    """
     try:
         # Obtener la pareja con sus jugadores
         pareja = db.query(Pareja).options(
@@ -176,6 +256,16 @@ async def update_pareja(
 
 @router.delete("/parejas/{pareja_id}")
 async def delete_pareja(pareja_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina una pareja y sus jugadores asociados de la base de datos.
+    
+    Args:
+        pareja_id: ID de la pareja a eliminar
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Mensaje de éxito o un error 404 si no se encuentra
+    """
     try:
         # Primero, obtener la pareja y sus jugadores
         pareja = db.query(Pareja).options(

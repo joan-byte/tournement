@@ -8,18 +8,64 @@ from typing import List, Optional
 import random
 
 class MesaService:
+    """
+    Servicio que maneja todas las operaciones relacionadas con las mesas de juego.
+    Proporciona funcionalidad para crear, gestionar y consultar mesas y sus asignaciones.
+    """
+
     def __init__(self, db: Session):
+        """
+        Constructor del servicio de mesas.
+        
+        Args:
+            db: Sesión de SQLAlchemy para interactuar con la base de datos
+        """
         self.db = db
 
     def get_mesa(self, mesa_id: int) -> Optional[Mesa]:
+        """
+        Obtiene una mesa específica por su ID.
+        
+        Args:
+            mesa_id: ID de la mesa a buscar
+            
+        Returns:
+            Mesa si existe, None en caso contrario
+        """
         return self.db.query(Mesa).filter(Mesa.id == mesa_id).first()
 
     def get_mesas_campeonato(self, campeonato_id: int) -> List[Mesa]:
+        """
+        Obtiene todas las mesas de un campeonato específico.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista de todas las mesas del campeonato
+        """
         return self.db.query(Mesa).filter(
             Mesa.campeonato_id == campeonato_id
         ).all()
 
     def crear_mesas(self, campeonato_id: int, partida: int) -> List[Mesa]:
+        """
+        Crea las mesas necesarias para una partida del campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            partida: Número de la partida
+            
+        Returns:
+            Lista de mesas creadas
+            
+        Raises:
+            HTTPException: Si no hay suficientes parejas activas o hay error en la creación
+            
+        Note:
+            - Mezcla aleatoriamente las parejas para asignación
+            - Maneja el caso de número impar de parejas
+        """
         # Obtener parejas activas del campeonato
         parejas = self.db.query(Pareja).filter(
             Pareja.campeonato_id == campeonato_id,
@@ -32,7 +78,7 @@ class MesaService:
                 detail="No hay suficientes parejas activas para crear mesas"
             )
 
-        # Mezclar parejas aleatoriamente
+        # Mezclar parejas aleatoriamente para asignación
         random.shuffle(parejas)
         mesas_creadas = []
         
@@ -62,6 +108,16 @@ class MesaService:
         campeonato_id: int,
         partida: int
     ) -> List[MesaConParejas]:
+        """
+        Obtiene las mesas de una partida con información de parejas y resultados.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            partida: Número de la partida
+            
+        Returns:
+            Lista de mesas con información detallada de parejas y resultados
+        """
         mesas = self.db.query(Mesa).filter(
             Mesa.campeonato_id == campeonato_id,
             Mesa.partida == partida
@@ -69,14 +125,14 @@ class MesaService:
 
         mesas_con_info = []
         for mesa in mesas:
-            # Verificar si tiene resultados
+            # Verificar si la mesa tiene resultados registrados
             tiene_resultados = self.verificar_resultados(
                 mesa.id,
                 partida,
                 campeonato_id
             )
 
-            # Obtener información de las parejas
+            # Obtener información de las parejas asignadas
             pareja1 = self.db.query(Pareja).filter(
                 Pareja.id == mesa.pareja1_id
             ).first()
@@ -99,6 +155,20 @@ class MesaService:
         pareja1_id: int,
         pareja2_id: Optional[int] = None
     ) -> Mesa:
+        """
+        Asigna o reasigna parejas a una mesa específica.
+        
+        Args:
+            mesa_id: ID de la mesa
+            pareja1_id: ID de la primera pareja
+            pareja2_id: ID de la segunda pareja (opcional)
+            
+        Returns:
+            Mesa actualizada
+            
+        Raises:
+            HTTPException: Si la mesa no existe o hay error en la asignación
+        """
         mesa = self.get_mesa(mesa_id)
         if not mesa:
             raise HTTPException(status_code=404, detail="Mesa no encontrada")
@@ -120,6 +190,17 @@ class MesaService:
         partida: int,
         campeonato_id: int
     ) -> bool:
+        """
+        Verifica si una mesa tiene resultados registrados.
+        
+        Args:
+            mesa_id: ID de la mesa
+            partida: Número de la partida
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            bool: True si la mesa tiene resultados, False en caso contrario
+        """
         resultados = self.db.query(Resultado).filter(
             Resultado.M == mesa_id,
             Resultado.P == partida,
@@ -128,6 +209,18 @@ class MesaService:
         return len(resultados) > 0
 
     def sortear_mesas(self, campeonato_id: int) -> List[dict]:
+        """
+        Realiza un sorteo aleatorio de mesas para un campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista de diccionarios con la información de las mesas sorteadas
+            
+        Raises:
+            HTTPException: Si no hay suficientes parejas o hay error en el sorteo
+        """
         # Obtener parejas activas del campeonato
         parejas = self.db.query(Pareja).filter(
             Pareja.campeonato_id == campeonato_id,
@@ -167,6 +260,15 @@ class MesaService:
             raise HTTPException(status_code=500, detail=str(e))
 
     def eliminar_mesas(self, campeonato_id: int):
+        """
+        Elimina todas las mesas de un campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Raises:
+            HTTPException: Si hay error en la eliminación
+        """
         try:
             self.db.query(Mesa).filter(
                 Mesa.campeonato_id == campeonato_id

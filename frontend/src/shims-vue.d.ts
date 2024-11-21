@@ -1,15 +1,35 @@
+/**
+ * @file shims-vue.d.ts
+ * @description Archivo de declaraciones de tipos para TypeScript
+ * @responsibilities
+ * - Definir tipos para archivos .vue
+ * - Extender tipos de Vue
+ * - Declarar tipos para módulos personalizados
+ */
+
+// Declaración para archivos .vue
 /// <reference types="vite/client" />
 
+/**
+ * Declaración del módulo para archivos .vue
+ * Permite importar componentes Vue como módulos TypeScript
+ */
 declare module '*.vue' {
   import type { ComponentOptions } from 'vue'
   const component: ComponentOptions
   export default component
 }
 
+/**
+ * Extensión del módulo 'vue'
+ * Define tipos para características core de Vue
+ */
 declare module 'vue' {
+  // Interfaz para referencias reactivas
   interface Ref<T = any> {
     value: T
   }
+  // Funciones fundamentales de Vue
   export function ref<T>(value: T): Ref<T>
   export function computed<T>(getter: () => T): Ref<T>
   export function onMounted(callback: () => void): void
@@ -17,11 +37,16 @@ declare module 'vue' {
   export const createApp: any
 }
 
+/**
+ * Declaración del módulo vue-router
+ * Define tipos para funcionalidades del router
+ */
 declare module 'vue-router' {
   export function useRouter(): any
   export function useRoute(): any
   export function createRouter(options: any): any
   export function createWebHistory(base?: string): any
+  // Interfaz para definición de rutas
   export interface RouteRecordRaw {
     path: string
     name?: string
@@ -30,19 +55,32 @@ declare module 'vue-router' {
   }
 }
 
+/**
+ * Declaración para módulos de stores
+ * Permite importar stores dinámicamente
+ */
 declare module '@/stores/*' {
   const store: any
   export default store
 }
 
+/**
+ * Declaración de tipos personalizados de la aplicación
+ * Define interfaces para las entidades principales
+ */
 declare module '@/types' {
+  // Interfaz para la entidad Campeonato
   export interface Campeonato {
     id: number
     nombre: string
+    fecha_inicio: string
+    dias_duracion: number
+    numero_partidas: number
     partida_actual: number
-    // ... otros campos
+    grupo_b: boolean
   }
 
+  // Interfaz para la entidad Pareja
   export interface Pareja {
     id: number
     nombre: string
@@ -53,6 +91,7 @@ declare module '@/types' {
     // ... otros campos
   }
 
+  // Interfaz para la entidad Mesa
   export interface Mesa {
     id: number
     numero: number
@@ -63,8 +102,22 @@ declare module '@/types' {
     pareja1?: Pareja
     pareja2?: Pareja
   }
+
+  // Interfaz para estadísticas de resultados
+  export interface ResultadoEstadisticas {
+    id: number;                 // ID único del resultado
+    pareja_id: number;         // ID de la pareja
+    campeonato_id: number;     // ID del campeonato
+    puntos_totales: number;    // Total de puntos acumulados
+    partidas_ganadas: number;  // Número de partidas ganadas
+    partidas_jugadas: number;  // Número total de partidas jugadas
+  }
 }
 
+/**
+ * Declaración del store de campeonato
+ * Define tipos para las funciones del store
+ */
 declare module '@/stores/campeonato' {
   export function useCampeonatoStore(): {
     campeonatoActual: Campeonato | null
@@ -78,6 +131,10 @@ declare module '@/stores/campeonato' {
   }
 }
 
+/**
+ * Declaración del store de pareja
+ * Define tipos para la gestión de parejas
+ */
 declare module '@/stores/pareja' {
   export function useParejaStore(): {
     fetchParejasCampeonato: (id: number) => Promise<Pareja[]>
@@ -86,9 +143,14 @@ declare module '@/stores/pareja' {
     fetchJugadoresPareja: (id: number) => Promise<any[]>
     updatePareja: (id: number, data: any) => Promise<void>
     deletePareja: (id: number) => Promise<void>
+    fetchParejas: () => Promise<Pareja[]>
   }
 }
 
+/**
+ * Declaración del store de mesa
+ * Define tipos para la gestión de mesas
+ */
 declare module '@/stores/mesa' {
   export function useMesaStore(): {
     mesas: Mesa[]
@@ -97,9 +159,14 @@ declare module '@/stores/mesa' {
     getMesasAsignadas: (campeonatoId: number) => Promise<Mesa[]>
     getMesa: (mesaId: number) => Promise<Mesa>
     cerrarPartida: (campeonatoId: number) => Promise<any>
+    fetchMesasConResultados: (campeonatoId: number, partidaActual: number) => Promise<MesaConResultados[]>
   }
 }
 
+/**
+ * Declaración del store de resultado
+ * Define tipos para la gestión de resultados
+ */
 declare module '@/stores/resultado' {
   export function useResultadoStore(): {
     resultados: any[]

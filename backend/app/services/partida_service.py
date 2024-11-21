@@ -1,3 +1,4 @@
+# Importaciones necesarias para el servicio de partidas
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.models.campeonato import Campeonato
@@ -8,10 +9,34 @@ from typing import List, Dict, Any
 import random
 
 class PartidaService:
+    """
+    Servicio que maneja todas las operaciones relacionadas con las partidas de un campeonato.
+    Gestiona el inicio, finalización y verificación de partidas, así como la asignación de mesas.
+    """
+
     def __init__(self, db: Session):
+        """
+        Constructor del servicio de partidas.
+        
+        Args:
+            db: Sesión de SQLAlchemy para interactuar con la base de datos
+        """
         self.db = db
 
     def iniciar_partida(self, campeonato_id: int) -> Dict[str, Any]:
+        """
+        Inicia una nueva partida en el campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Dict con mensaje de confirmación y número de partida actual
+            
+        Raises:
+            HTTPException: Si el campeonato no existe o ya ha finalizado
+        """
+        # Verificar existencia del campeonato
         campeonato = self.db.query(Campeonato).filter(
             Campeonato.id == campeonato_id
         ).first()
@@ -22,12 +47,14 @@ class PartidaService:
                 detail="Campeonato no encontrado"
             )
 
+        # Verificar si el campeonato ya ha finalizado
         if campeonato.partida_actual >= campeonato.numero_partidas:
             raise HTTPException(
                 status_code=400,
                 detail="El campeonato ya ha finalizado"
             )
 
+        # Incrementar el contador de partidas
         campeonato.partida_actual += 1
 
         try:
@@ -41,6 +68,19 @@ class PartidaService:
             raise HTTPException(status_code=500, detail=str(e))
 
     def finalizar_partida(self, campeonato_id: int) -> Dict[str, Any]:
+        """
+        Finaliza la partida actual del campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Dict con mensaje de confirmación y número de partida actual
+            
+        Raises:
+            HTTPException: Si el campeonato no existe o faltan resultados
+        """
+        # Verificar existencia del campeonato
         campeonato = self.db.query(Campeonato).filter(
             Campeonato.id == campeonato_id
         ).first()
@@ -51,6 +91,7 @@ class PartidaService:
                 detail="Campeonato no encontrado"
             )
 
+        # Verificar que todos los resultados estén registrados
         if not self.verificar_partida_completa(
             campeonato_id,
             campeonato.partida_actual
@@ -75,6 +116,20 @@ class PartidaService:
         campeonato_id: int,
         partida: int
     ) -> bool:
+        """
+        Verifica si todos los resultados de una partida están registrados.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            partida: Número de la partida a verificar
+            
+        Returns:
+            bool: True si todos los resultados están registrados, False en caso contrario
+            
+        Note:
+            Verifica que cada mesa tenga el número correcto de resultados según
+            si tiene una o dos parejas asignadas
+        """
         # Obtener todas las mesas de la partida
         mesas = self.db.query(Mesa).filter(
             Mesa.campeonato_id == campeonato_id,
@@ -84,7 +139,7 @@ class PartidaService:
         if not mesas:
             return False
 
-        # Verificar que cada mesa tenga resultados
+        # Verificar resultados para cada mesa
         for mesa in mesas:
             resultados = self.db.query(Resultado).filter(
                 Resultado.campeonato_id == campeonato_id,
@@ -92,16 +147,29 @@ class PartidaService:
                 Resultado.M == mesa.id
             ).all()
 
-            # Si es mesa con dos parejas, debe tener dos resultados
+            # Mesa con dos parejas debe tener dos resultados
             if mesa.pareja2_id and len(resultados) != 2:
                 return False
-            # Si es mesa con una pareja, debe tener un resultado
+            # Mesa con una pareja debe tener un resultado
             elif not mesa.pareja2_id and len(resultados) != 1:
                 return False
 
         return True
 
     def get_mesas_asignadas(self, campeonato_id: int) -> List[Dict[str, Any]]:
+        """
+        Obtiene la información de todas las mesas asignadas en la partida actual.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista de diccionarios con información detallada de cada mesa y sus parejas
+            
+        Raises:
+            HTTPException: Si el campeonato no existe
+        """
+        # Verificar existencia del campeonato
         campeonato = self.db.query(Campeonato).filter(
             Campeonato.id == campeonato_id
         ).first()
@@ -112,11 +180,13 @@ class PartidaService:
                 detail="Campeonato no encontrado"
             )
 
+        # Obtener mesas de la partida actual
         mesas = self.db.query(Mesa).filter(
             Mesa.campeonato_id == campeonato_id,
             Mesa.partida == campeonato.partida_actual
         ).all()
 
+        # Construir información detallada de cada mesa
         mesas_info = []
         for mesa in mesas:
             pareja1 = self.db.query(Pareja).filter(
@@ -142,6 +212,22 @@ class PartidaService:
         return mesas_info
 
     def sortear_parejas(self, campeonato_id: int) -> List[Dict[str, Any]]:
+        """
+        Realiza un sorteo aleatorio de parejas para asignar a las mesas.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista de diccionarios con la información de las mesas creadas
+            
+        Raises:
+            HTTPException: Si no hay suficientes parejas activas o hay error en el sorteo
+            
+        Note:
+            - Mezcla aleatoriamente las parejas activas
+            - Maneja el caso de número impar de parejas
+        """
         # Obtener parejas activas
         parejas = self.db.query(Pareja).filter(
             Pareja.campeonato_id == campeonato_id,

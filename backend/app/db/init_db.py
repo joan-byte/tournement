@@ -5,20 +5,38 @@ from app.db.session import engine
 
 def init_db() -> None:
     """
-    Inicializar la base de datos creando todas las tablas.
+    Inicializa la base de datos creando todas las tablas definidas en los modelos.
+    
+    Esta función debe ejecutarse cuando se inicia la aplicación por primera vez
+    o cuando se necesita recrear todas las tablas.
+    
+    Note:
+        Utiliza el engine global y los modelos registrados en Base.metadata
     """
     Base.metadata.create_all(bind=engine)
 
 def drop_db() -> None:
     """
-    Eliminar todas las tablas de la base de datos.
-    Solo usar en desarrollo/testing.
+    Elimina todas las tablas de la base de datos.
+    
+    ADVERTENCIA: Esta función es destructiva y eliminará todos los datos.
+    Solo debe utilizarse en entornos de desarrollo o testing.
+    
+    Note:
+        Utiliza el engine global y elimina todas las tablas registradas en Base.metadata
     """
     Base.metadata.drop_all(bind=engine)
 
 def get_db():
     """
-    Generador de sesiones de base de datos.
+    Generador de contexto para obtener sesiones de base de datos.
+    
+    Yields:
+        Session: Una sesión de SQLAlchemy activa
+    
+    Note:
+        La sesión se cierra automáticamente al final del contexto,
+        incluso si ocurre una excepción
     """
     db = Session(engine)
     try:
@@ -28,10 +46,16 @@ def get_db():
 
 def check_db_connected() -> bool:
     """
-    Verificar si la conexión a la base de datos está funcionando.
+    Verifica si la conexión a la base de datos está funcionando.
+    
+    Returns:
+        bool: True si la conexión es exitosa, False en caso contrario
+    
+    Note:
+        Ejecuta una consulta simple (SELECT 1) para probar la conexión
+        e imprime el error si la conexión falla
     """
     try:
-        # Intentar ejecutar una consulta simple
         with engine.connect() as conn:
             conn.execute("SELECT 1")
         return True
@@ -41,17 +65,24 @@ def check_db_connected() -> bool:
 
 def create_first_superuser() -> None:
     """
-    Crear el primer superusuario si no existe.
+    Crea el primer superusuario en la base de datos si no existe.
+    
+    Esta función:
+    1. Verifica si ya existe un superusuario
+    2. Si no existe, crea uno nuevo usando las credenciales de configuración
+    
+    Note:
+        - Utiliza las configuraciones FIRST_SUPERUSER y FIRST_SUPERUSER_PASSWORD
+        - Maneja automáticamente el hash de la contraseña
+        - Imprime mensajes de éxito o error según corresponda
     """
     from app.core.security import get_password_hash
     from app.models.user import User
     
     db = Session(engine)
     try:
-        # Verificar si ya existe un superusuario
         user = db.query(User).filter(User.is_superuser == True).first()
         if not user:
-            # Crear superusuario
             superuser = User(
                 email=settings.FIRST_SUPERUSER,
                 hashed_password=get_password_hash(settings.FIRST_SUPERUSER_PASSWORD),

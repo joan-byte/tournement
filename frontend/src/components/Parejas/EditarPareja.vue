@@ -1,8 +1,13 @@
 <template>
+  <!-- Modal overlay con fondo semitransparente -->
   <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" v-if="show">
+    <!-- Contenedor principal del modal -->
     <div class="fixed inset-0 z-10 overflow-y-auto">
+      <!-- Centrado vertical y horizontal del contenido -->
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Contenedor del formulario con estilos y animaciones -->
         <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+          <!-- Formulario de edición -->
           <form @submit.prevent="handleSubmit">
             <div class="space-y-4">
               <!-- Número de pareja (solo lectura) -->
@@ -149,22 +154,30 @@
 </template>
 
 <script setup lang="ts">
+// Importaciones necesarias
 import { ref, computed, onMounted } from 'vue'
 import { useParejaStore } from '@/stores/pareja'
 import type { Pareja } from '@/types'
 
+// Props del componente
 const props = defineProps<{
-  show: boolean
-  pareja: Pareja
+  show: boolean            // Controla la visibilidad del modal
+  pareja: Pareja          // Datos de la pareja a editar
 }>()
 
+// Eventos que puede emitir el componente
 const emit = defineEmits<{
-  (e: 'close'): void
-  (e: 'updated'): void
+  (e: 'close'): void      // Evento para cerrar el modal
+  (e: 'updated'): void    // Evento para notificar actualización exitosa
 }>()
 
+// Inicialización del store
 const parejaStore = useParejaStore()
 
+/**
+ * Estado del formulario con los datos editables de la pareja
+ * Incluye club y datos de ambos jugadores
+ */
 const formData = ref({
   club: props.pareja.club || '',
   jugador1: {
@@ -177,6 +190,10 @@ const formData = ref({
   }
 })
 
+/**
+ * Computed property que genera el nombre completo de la pareja
+ * combinando los nombres y apellidos de ambos jugadores
+ */
 const nombrePareja = computed(() => {
   const jugador1 = formData.value.jugador1
   const jugador2 = formData.value.jugador2
@@ -188,11 +205,16 @@ const nombrePareja = computed(() => {
   return `${jugador1.nombre} ${jugador1.apellido} Y ${jugador2.nombre} ${jugador2.apellido}`
 })
 
+/**
+ * Hook que se ejecuta al montar el componente
+ * Carga los datos de los jugadores desde el servidor
+ */
 onMounted(async () => {
   try {
     const jugadores = await parejaStore.fetchJugadoresPareja(props.pareja.id)
-    console.log('Jugadores cargados:', jugadores)  // Para depuración
+    console.log('Jugadores cargados:', jugadores)
     
+    // Actualiza el formulario con los datos obtenidos
     if (jugadores && Array.isArray(jugadores) && jugadores.length === 2) {
       formData.value = {
         club: props.pareja.club || '',
@@ -205,7 +227,7 @@ onMounted(async () => {
           apellido: jugadores[1].apellido
         }
       }
-      console.log('FormData actualizado:', formData.value)  // Para depuración
+      console.log('FormData actualizado:', formData.value)
     } else {
       console.error('Formato de jugadores incorrecto:', jugadores)
     }
@@ -214,6 +236,10 @@ onMounted(async () => {
   }
 })
 
+/**
+ * Maneja el envío del formulario
+ * Actualiza los datos de la pareja en el servidor
+ */
 const handleSubmit = async () => {
   try {
     const updateData = {
@@ -230,6 +256,10 @@ const handleSubmit = async () => {
   }
 }
 
+/**
+ * Maneja la eliminación de la pareja
+ * Solicita confirmación antes de proceder
+ */
 const borrarPareja = async () => {
   if (confirm('¿Está seguro de que desea eliminar esta pareja?')) {
     try {

@@ -1,13 +1,33 @@
+<!-- 
+  @file index.html
+  @description Punto de entrada HTML principal de la aplicación
+  @responsibilities
+    - Configurar metadatos básicos
+    - Establecer el punto de montaje de la aplicación Vue
+    - Cargar los recursos iniciales
+-->
+
 <!DOCTYPE html>
+<!-- Definición del idioma del documento -->
 <html lang="es">
   <head>
+    <!-- Configuración de codificación de caracteres -->
     <meta charset="UTF-8">
+    
+    <!-- Favicon de la aplicación -->
     <link rel="icon" href="/favicon.ico">
+    
+    <!-- Configuración de viewport para dispositivos móviles -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <!-- Título de la aplicación -->
     <title>Torneo de Dominó</title>
   </head>
   <body>
+    <!-- Punto de montaje para la aplicación Vue -->
     <div id="app"></div>
+    
+    <!-- Script principal de la aplicación -->
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

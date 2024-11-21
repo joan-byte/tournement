@@ -1,6 +1,15 @@
+/**
+ * @component Parejas.vue
+ * @description Componente principal para la gestión de parejas en un campeonato
+ * @responsibilities 
+ * - Gestionar la inscripción de parejas
+ * - Mostrar listado de parejas inscritas
+ * - Controlar el estado de inscripción
+ */
 <template>
+  <!-- Contenedor principal que gestiona la vista de parejas -->
   <div class="container mx-auto p-4">
-    <!-- Panel superior con botones -->
+    <!-- Panel superior con información del campeonato y acciones principales -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
       <div class="px-4 py-5 sm:px-6 flex justify-between items-center">
         <div>
@@ -11,6 +20,7 @@
             {{ campeonatoActual?.nombre }}
           </p>
         </div>
+        <!-- Grupo de botones contextuales según el estado de inscripción -->
         <div class="flex gap-4">
           <button
             v-if="!inscripcionCerrada"
@@ -43,7 +53,7 @@
       </div>
     </div>
 
-    <!-- Lista de parejas -->
+    <!-- Panel principal con listado de parejas -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
       <div class="px-4 py-5 sm:px-6">
         <h3 class="text-lg leading-6 font-medium text-gray-900">
@@ -51,6 +61,7 @@
         </h3>
       </div>
 
+      <!-- Contenedor de estados y lista de parejas -->
       <div class="border-t border-gray-200">
         <div v-if="isLoading" class="text-center py-4">
           <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-500 mx-auto"></div>
@@ -64,6 +75,7 @@
         <div v-else-if="!parejasOrdenadas.length" class="text-center py-4 text-gray-500">
           No hay parejas registradas
         </div>
+        <!-- Lista de parejas con sus detalles y acciones -->
         <ul v-else role="list" class="divide-y divide-gray-200">
           <li
             v-for="pareja in parejasOrdenadas"
@@ -118,7 +130,7 @@
       </div>
     </div>
 
-    <!-- Modales -->
+    <!-- Modales para gestión de parejas -->
     <NuevaPareja
       v-if="showNewParejaModal"
       :show="showNewParejaModal"
@@ -138,6 +150,9 @@
 </template>
 
 <script setup lang="ts">
+/**
+ * Importaciones necesarias para el funcionamiento del componente
+ */
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCampeonatoStore } from '@/stores/campeonato'
@@ -149,6 +164,9 @@ import { useMesaStore } from '@/stores/mesa'
 import { useResultadoStore } from '@/stores/resultado'
 import { usePartidaStore } from '@/stores/partida'
 
+/**
+ * Inicialización de stores y router
+ */
 const router = useRouter()
 const campeonatoStore = useCampeonatoStore()
 const parejaStore = useParejaStore()
@@ -156,6 +174,9 @@ const mesaStore = useMesaStore()
 const resultadoStore = useResultadoStore()
 const partidaStore = usePartidaStore()
 
+/**
+ * Estado reactivo del componente
+ */
 const parejas = ref<Pareja[]>([])
 const showNewParejaModal = ref(false)
 const isLoading = ref(true)
@@ -164,15 +185,19 @@ const parejaEnEdicion = ref<Pareja | null>(null)
 const inscripcionEstado = ref(false)
 const hayResultados = ref(false)
 
-// Computed para obtener el campeonato actual
+/**
+ * Computed properties para datos derivados
+ */
 const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
-// Computed para verificar si la inscripción está cerrada
 const inscripcionCerrada = computed(() => {
   return campeonatoActual.value?.partida_actual > 0
 })
 
-// Definir loadParejas antes de usarlo en cualquier otro lugar
+/**
+ * @function loadParejas
+ * @description Carga los datos de parejas y actualiza estados
+ */
 const loadParejas = async () => {
   try {
     isLoading.value = true
@@ -220,6 +245,10 @@ setInterval(() => {
   }
 }, 100)
 
+/**
+ * @computed parejasOrdenadas
+ * @description Ordena las parejas por número
+ */
 const parejasOrdenadas = computed(() => {
   if (!Array.isArray(parejas.value)) return []
   return [...parejas.value]
@@ -227,6 +256,9 @@ const parejasOrdenadas = computed(() => {
     .sort((a, b) => (b.numero as number) - (a.numero as number))
 })
 
+/**
+ * Funciones de gestión de parejas
+ */
 const toggleParejaEstado = async (pareja: Pareja) => {
   try {
     await parejaStore.toggleParejaEstado(pareja.id, !pareja.activa)
@@ -241,6 +273,9 @@ const editarPareja = (pareja: Pareja) => {
   parejaEnEdicion.value = pareja
 }
 
+/**
+ * Manejadores de eventos para creación y actualización
+ */
 const onParejaCreated = async () => {
   showNewParejaModal.value = false
   await loadParejas()
@@ -251,6 +286,10 @@ const onParejaUpdated = async () => {
   await loadParejas()
 }
 
+/**
+ * @function volverAtras
+ * @description Revierte el proceso de cierre de inscripción
+ */
 const volverAtras = async () => {
   try {
     if (!campeonatoActual.value) return
@@ -289,6 +328,10 @@ const volverAtras = async () => {
   }
 }
 
+/**
+ * @function cerrarInscripcion
+ * @description Finaliza el período de inscripción e inicia el campeonato
+ */
 const cerrarInscripcion = async () => {
   try {
     if (!campeonatoActual.value) return

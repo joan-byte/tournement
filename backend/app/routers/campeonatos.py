@@ -1,3 +1,4 @@
+# Importaciones necesarias para definir las rutas y manejar las solicitudes
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app.db.session import get_db
@@ -12,11 +13,21 @@ from sqlalchemy import text, func
 from contextlib import contextmanager
 from sqlalchemy.exc import OperationalError
 
+# Creación de un enrutador para manejar las rutas relacionadas con campeonatos
 router = APIRouter()
 
 @contextmanager
 def transaction_lock(db: Session):
-    """Ejecuta operaciones en una transacción bloqueada"""
+    """
+    Ejecuta operaciones en una transacción bloqueada.
+    Utiliza un bloqueo exclusivo en la tabla campeonatos para evitar operaciones concurrentes.
+    
+    Args:
+        db: Sesión de la base de datos
+    
+    Yields:
+        Control de la transacción bloqueada
+    """
     try:
         # Bloquear la tabla para evitar operaciones concurrentes
         db.execute(text("LOCK TABLE campeonatos IN EXCLUSIVE MODE"))
@@ -26,10 +37,29 @@ def transaction_lock(db: Session):
 
 @router.get("/")
 def get_campeonatos(db: Session = Depends(get_db)):
+    """
+    Obtiene todos los campeonatos de la base de datos.
+    
+    Args:
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Lista de todos los campeonatos
+    """
     return db.query(Campeonato).all()
 
 @router.get("/{campeonato_id}")
 def get_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
+    """
+    Obtiene un campeonato específico por su ID.
+    
+    Args:
+        campeonato_id: ID del campeonato a obtener
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        El campeonato solicitado o un error 404 si no se encuentra
+    """
     try:
         campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
         if not campeonato:
@@ -48,6 +78,16 @@ def get_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
 
 @router.post("/")
 async def create_campeonato(campeonato: CampeonatoCreate, db: Session = Depends(get_db)):
+    """
+    Crea un nuevo campeonato en la base de datos.
+    
+    Args:
+        campeonato: Datos del campeonato a crear
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        El campeonato creado
+    """
     try:
         db_campeonato = Campeonato(
             nombre=campeonato.nombre,
@@ -71,6 +111,17 @@ def update_campeonato(
     campeonato_data: CampeonatoUpdate,
     db: Session = Depends(get_db)
 ):
+    """
+    Actualiza un campeonato existente.
+    
+    Args:
+        campeonato_id: ID del campeonato a actualizar
+        campeonato_data: Datos actualizados del campeonato
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        El campeonato actualizado o un error 404 si no se encuentra
+    """
     try:
         campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
         if not campeonato:
@@ -93,6 +144,16 @@ def update_campeonato(
 
 @router.delete("/{campeonato_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina un campeonato y sus datos relacionados de la base de datos.
+    
+    Args:
+        campeonato_id: ID del campeonato a eliminar
+        db: Sesión de la base de datos (inyectada automáticamente)
+    
+    Returns:
+        Mensaje de éxito o un error 404 si no se encuentra
+    """
     try:
         with transaction_lock(db):
             # Verificar que el campeonato existe

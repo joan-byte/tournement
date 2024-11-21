@@ -7,10 +7,37 @@ from sqlalchemy import func, case
 from typing import List, Dict, Any
 
 class RankingService:
+    """
+    Servicio que maneja todas las operaciones relacionadas con el ranking del campeonato.
+    Proporciona funcionalidad para calcular y consultar diferentes tipos de rankings.
+    """
+
     def __init__(self, db: Session):
+        """
+        Constructor del servicio de ranking.
+        
+        Args:
+            db: Sesión de SQLAlchemy para interactuar con la base de datos
+        """
         self.db = db
 
     def get_ranking(self, campeonato_id: int) -> List[Dict[str, Any]]:
+        """
+        Obtiene el ranking actual del campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista de diccionarios con las estadísticas de cada pareja,
+            ordenada por PG (descendente) y PP (ascendente)
+            
+        Raises:
+            HTTPException: Si el campeonato no existe
+            
+        Note:
+            Incluye PG (Partidas Ganadas), PP (Puntos Perdidos) y GB (Grupo)
+        """
         # Verificar que el campeonato existe
         campeonato = self.db.query(Campeonato).filter(
             Campeonato.id == campeonato_id
@@ -22,6 +49,7 @@ class RankingService:
             )
 
         # Obtener los resultados agrupados por pareja
+        # Calcula totales de PG, PP y determina el grupo (A/B)
         resultados = self.db.query(
             Resultado.id_pareja,
             Pareja.nombre.label('nombre_pareja'),
@@ -61,6 +89,18 @@ class RankingService:
         return ranking
 
     def get_ranking_final(self, campeonato_id: int) -> List[Dict[str, Any]]:
+        """
+        Obtiene el ranking final del campeonato una vez finalizado.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Lista ordenada con el ranking final
+            
+        Raises:
+            HTTPException: Si el campeonato no existe o no ha finalizado
+        """
         # Verificar que el campeonato ha finalizado
         campeonato = self.db.query(Campeonato).filter(
             Campeonato.id == campeonato_id
@@ -81,6 +121,18 @@ class RankingService:
         return self.get_ranking(campeonato_id)
 
     def actualizar_ranking(self, campeonato_id: int) -> Dict[str, str]:
+        """
+        Actualiza el ranking del campeonato.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            
+        Returns:
+            Mensaje de confirmación
+            
+        Raises:
+            HTTPException: Si hay error en la actualización
+        """
         try:
             # Aquí podrías agregar lógica adicional para actualizar el ranking
             # Por ejemplo, recalcular posiciones o actualizar estadísticas
@@ -97,6 +149,19 @@ class RankingService:
         campeonato_id: int,
         grupo: str
     ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el ranking filtrado por grupo específico.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            grupo: Grupo a filtrar ('A' o 'B')
+            
+        Returns:
+            Lista filtrada del ranking para el grupo especificado
+            
+        Raises:
+            HTTPException: Si el grupo es inválido
+        """
         if grupo not in ['A', 'B']:
             raise HTTPException(
                 status_code=400,
@@ -111,6 +176,22 @@ class RankingService:
         campeonato_id: int,
         pareja_id: int
     ) -> List[Dict[str, Any]]:
+        """
+        Obtiene el historial de resultados de una pareja específica.
+        
+        Args:
+            campeonato_id: ID del campeonato
+            pareja_id: ID de la pareja
+            
+        Returns:
+            Lista de resultados ordenados por partida
+            
+        Raises:
+            HTTPException: Si no se encuentran resultados
+            
+        Note:
+            Incluye información de mesa, partida, PG, PP, GB y RP
+        """
         # Obtener todos los resultados de la pareja ordenados por partida
         resultados = self.db.query(Resultado).filter(
             Resultado.campeonato_id == campeonato_id,

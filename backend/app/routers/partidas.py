@@ -11,7 +11,17 @@ router = APIRouter()
 @router.get("/{campeonato_id}/mesas")
 async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
     """
-    Obtiene las mesas asignadas para la partida actual del campeonato
+    Obtiene las mesas asignadas para la partida actual del campeonato.
+    
+    Args:
+        campeonato_id: ID del campeonato
+        db: Sesión de la base de datos
+    
+    Returns:
+        Lista de mesas con información detallada de las parejas y resultados
+    
+    Raises:
+        HTTPException: Si hay error al obtener las mesas o no se encuentra el campeonato
     """
     try:
         # Obtener el campeonato y su partida actual
@@ -31,7 +41,7 @@ async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
         if not mesas:
             return []
 
-        # Cargar las parejas relacionadas
+        # Cargar las parejas relacionadas y construir respuesta detallada
         mesas_con_parejas = []
         for mesa in mesas:
             # Verificar si hay resultados para esta mesa
@@ -79,6 +89,20 @@ async def get_mesas_partida(campeonato_id: int, db: Session = Depends(get_db)):
 
 @router.post("/sortear-parejas/{campeonato_id}")
 async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
+    """
+    Realiza el sorteo de parejas para una nueva partida.
+    
+    Args:
+        campeonato_id: ID del campeonato
+        db: Sesión de la base de datos
+    
+    Returns:
+        Mensaje de confirmación del sorteo
+    
+    Note:
+        - Para la primera partida realiza un sorteo aleatorio
+        - Para partidas posteriores ordena por ranking
+    """
     try:
         # Obtener el campeonato
         campeonato = db.query(Campeonato).filter(Campeonato.id == campeonato_id).first()
@@ -151,6 +175,20 @@ async def sortear_parejas(campeonato_id: int, db: Session = Depends(get_db)):
 
 @router.delete("/{campeonato_id}/mesas")
 async def eliminar_mesas_campeonato(campeonato_id: int, db: Session = Depends(get_db)):
+    """
+    Elimina todas las mesas de un campeonato específico.
+    
+    Args:
+        campeonato_id: ID del campeonato
+        db: Sesión de la base de datos
+    
+    Returns:
+        Mensaje de confirmación de la eliminación
+    
+    Note:
+        Realiza una eliminación segura verificando que todas las mesas
+        se hayan eliminado correctamente
+    """
     try:
         # Primero obtener todas las mesas del campeonato
         mesas = db.query(Mesa).filter(Mesa.campeonato_id == campeonato_id).all()

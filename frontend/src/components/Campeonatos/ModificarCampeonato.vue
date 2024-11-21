@@ -1,8 +1,18 @@
+<!-- 
+  Componente modal para modificar los datos de un campeonato existente.
+  Permite editar información básica y eliminar el campeonato.
+  Incluye confirmación para acciones destructivas.
+-->
 <template>
+  <!-- Overlay del modal con fondo semi-transparente -->
   <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity">
+    <!-- Contenedor principal del modal -->
     <div class="fixed inset-0 z-10 overflow-y-auto">
+      <!-- Centrado vertical y horizontal del contenido -->
       <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+        <!-- Panel principal del modal -->
         <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
+          <!-- Botón de cerrar en la esquina superior derecha -->
           <div class="absolute right-0 top-0 hidden pr-4 pt-4 sm:block">
             <button
               type="button"
@@ -13,14 +23,21 @@
               <XMarkIcon class="h-6 w-6" aria-hidden="true" />
             </button>
           </div>
+
+          <!-- Contenido del modal -->
           <div class="sm:flex sm:items-start">
             <div class="mt-3 text-center sm:mt-0 sm:text-left w-full">
+              <!-- Título del modal -->
               <h3 class="text-lg font-medium leading-6 text-gray-900">
                 Modificar Campeonato
               </h3>
+
+              <!-- Formulario de edición -->
               <div class="mt-4">
                 <form @submit.prevent="handleSubmit">
+                  <!-- Campos del formulario -->
                   <div class="space-y-4">
+                    <!-- Campo: Nombre del campeonato -->
                     <div>
                       <label for="nombre" class="block text-sm font-medium text-gray-700">
                         Nombre
@@ -34,6 +51,8 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       />
                     </div>
+
+                    <!-- Campo: Fecha de inicio -->
                     <div>
                       <label for="fecha_inicio" class="block text-sm font-medium text-gray-700">
                         Fecha de inicio
@@ -47,6 +66,8 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       />
                     </div>
+
+                    <!-- Campo: Días de duración -->
                     <div>
                       <label for="dias_duracion" class="block text-sm font-medium text-gray-700">
                         Días de duración
@@ -61,6 +82,8 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       />
                     </div>
+
+                    <!-- Campo: Número de partidas -->
                     <div>
                       <label for="numero_partidas" class="block text-sm font-medium text-gray-700">
                         Número de partidas
@@ -75,6 +98,8 @@
                         class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       />
                     </div>
+
+                    <!-- Campo: Grupo B (checkbox) -->
                     <div>
                       <label for="grupo_b" class="inline-flex items-center">
                         <input
@@ -90,7 +115,10 @@
                       </label>
                     </div>
                   </div>
+
+                  <!-- Botones de acción -->
                   <div class="mt-5 sm:mt-4 flex justify-between">
+                    <!-- Botón de eliminar -->
                     <button
                       type="button"
                       @click="confirmarEliminar"
@@ -99,6 +127,7 @@
                       Eliminar
                     </button>
                     <div class="flex gap-2">
+                      <!-- Botón de cancelar -->
                       <button
                         type="button"
                         @click="$emit('close')"
@@ -106,6 +135,7 @@
                       >
                         Cancelar
                       </button>
+                      <!-- Botón de guardar -->
                       <button
                         type="submit"
                         class="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-base font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 sm:text-sm"
@@ -122,15 +152,18 @@
       </div>
     </div>
 
-    <!-- Modal de confirmación de eliminación -->
+    <!-- Modal de confirmación para eliminar -->
     <div v-if="showConfirmDelete" class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity z-20">
       <div class="fixed inset-0 z-30 overflow-y-auto">
         <div class="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
+          <!-- Panel de confirmación -->
           <div class="relative transform overflow-hidden rounded-lg bg-white px-4 pb-4 pt-5 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg sm:p-6">
             <div class="sm:flex sm:items-start">
+              <!-- Icono de advertencia -->
               <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
                 <ExclamationTriangleIcon class="h-6 w-6 text-red-600" aria-hidden="true" />
               </div>
+              <!-- Mensaje de confirmación -->
               <div class="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left">
                 <h3 class="text-base font-semibold leading-6 text-gray-900">
                   Eliminar Campeonato
@@ -142,6 +175,7 @@
                 </div>
               </div>
             </div>
+            <!-- Botones de confirmación -->
             <div class="mt-5 sm:mt-4 sm:flex sm:flex-row-reverse">
               <button
                 type="button"
@@ -166,12 +200,14 @@
 </template>
 
 <script setup lang="ts">
+// Importaciones y configuración
 import { ref, onMounted } from 'vue'
 import { XMarkIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline'
 import { useCampeonatoStore } from '@/stores/campeonato'
 import type { Campeonato } from '@/types'
 import type { CampeonatoStore } from '@/types/store'
 
+// Props y emisiones de eventos
 const props = defineProps<{
   campeonato: Campeonato
 }>()
@@ -182,9 +218,11 @@ const emit = defineEmits<{
   (e: 'deleted'): void
 }>()
 
+// Store y estado local
 const campeonatoStore = useCampeonatoStore() as CampeonatoStore
 const showConfirmDelete = ref(false)
 
+// Datos del formulario
 const formData = ref({
   nombre: '',
   fecha_inicio: '',
@@ -193,6 +231,7 @@ const formData = ref({
   grupo_b: false
 })
 
+// Inicialización de datos al montar el componente
 onMounted(() => {
   formData.value = {
     nombre: props.campeonato.nombre,
@@ -203,6 +242,10 @@ onMounted(() => {
   }
 })
 
+// Métodos
+/**
+ * Maneja el envío del formulario para actualizar el campeonato
+ */
 const handleSubmit = async () => {
   try {
     await campeonatoStore.updateCampeonato(props.campeonato.id, formData.value)
@@ -213,10 +256,16 @@ const handleSubmit = async () => {
   }
 }
 
+/**
+ * Muestra el modal de confirmación para eliminar
+ */
 const confirmarEliminar = () => {
   showConfirmDelete.value = true
 }
 
+/**
+ * Ejecuta la eliminación del campeonato
+ */
 const eliminarCampeonato = async () => {
   try {
     await campeonatoStore.deleteCampeonato(props.campeonato.id)
