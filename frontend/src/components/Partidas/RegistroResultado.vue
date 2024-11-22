@@ -76,16 +76,23 @@ const calculosPareja2 = computed(() => {
 
 // Computed para validaciones en tiempo real
 const validaciones = computed(() => {
-  const rp1 = Number(formData.value.pareja1.RP)
-  const rp2 = Number(formData.value.pareja2.RP)
-  const sumaTotal = rp1 + rp2
+  // Asegurarnos de que los valores son enteros
+  const rp1 = Math.floor(Number(formData.value.pareja1.RP)) || 0
+  const rp2 = Math.floor(Number(formData.value.pareja2.RP)) || 0
   
   return {
+    noEsEntero1: Number(formData.value.pareja1.RP) % 1 !== 0,
+    noEsEntero2: Number(formData.value.pareja2.RP) % 1 !== 0,
     excede300: rp1 > 300 || rp2 > 300,
     esNegativo: rp1 < 0 || rp2 < 0,
-    sonIguales: rp1 === rp2 && (rp1 !== 0 || rp2 !== 0),
-    sumaInvalida: (sumaTotal < 1 || sumaTotal > 599) && (rp1 !== 0 || rp2 !== 0),
-    sumaActual: sumaTotal
+    sonIguales: rp1 === rp2 && rp1 !== 0,
+    hayErrores() {
+      return this.noEsEntero1 || 
+             this.noEsEntero2 || 
+             this.excede300 || 
+             this.esNegativo || 
+             this.sonIguales
+    }
   }
 })
 
@@ -157,11 +164,15 @@ const loadMesa = async () => {
  */
 const handleSubmit = async () => {
   try {
-    if (!mesa.value || !campeonatoActual.value) return
+    if (!mesa.value || !campeonatoActual.value || !mesa.value.pareja1) {
+      error.value = 'Faltan datos necesarios para guardar el resultado'
+      return
+    }
 
     const partidaActual = campeonatoActual.value.partida_actual
 
-    const resultado = {
+    // Crear objeto base del resultado
+    const resultado: any = {
       mesa_id: mesa.value.id,
       campeonato_id: campeonatoActual.value.id,
       partida: partidaActual,
@@ -171,8 +182,12 @@ const handleSubmit = async () => {
         PG: calculosPareja1.value.PG,
         PP: calculosPareja1.value.PP,
         GB: formData.value.pareja1.GB
-      },
-      pareja2: {
+      }
+    }
+
+    // Solo agregar pareja2 si existe
+    if (mesa.value.pareja2) {
+      resultado.pareja2 = {
         id: mesa.value.pareja2.id,
         RP: Number(formData.value.pareja2.RP),
         PG: calculosPareja2.value.PG,
@@ -184,6 +199,7 @@ const handleSubmit = async () => {
     await resultadoStore.saveResultado(resultado)
     router.push('/mesas/resultados')
   } catch (e) {
+    console.error('Error en handleSubmit:', e)
     error.value = 'Error al guardar el resultado'
   }
 }
@@ -234,12 +250,13 @@ onMounted(loadMesa)
                   <input
                     type="number"
                     id="pareja1-rp"
-                    v-model="formData.pareja1.RP"
+                    v-model.number="formData.pareja1.RP"
                     required
                     min="0"
                     max="300"
                     step="1"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    :class="{'border-red-500': validaciones.noEsEntero1 || validaciones.excede300 || validaciones.esNegativo || validaciones.sonIguales}"
                   />
                 </div>
                 <div>
@@ -277,12 +294,13 @@ onMounted(loadMesa)
                   <input
                     type="number"
                     id="pareja2-rp"
-                    v-model="formData.pareja2.RP"
+                    v-model.number="formData.pareja2.RP"
                     required
                     min="0"
                     max="300"
                     step="1"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
+                    :class="{'border-red-500': validaciones.noEsEntero2 || validaciones.excede300 || validaciones.esNegativo || validaciones.sonIguales}"
                   />
                 </div>
                 <div>
@@ -304,11 +322,19 @@ onMounted(loadMesa)
               </div>
             </div>
 
-            <!-- Validaciones generales -->
-            <div v-if="formData.pareja1.RP && formData.pareja2.RP" class="text-sm text-red-600">
-              <p v-if="validaciones.sonIguales">Los resultados no pueden ser iguales</p>
-              <p v-if="validaciones.sumaInvalida">
-                La suma debe estar entre 1 y 599 (actual: {{ validaciones.sumaActual }})
+            <!-- Mensajes de validación -->
+            <div class="mt-4 space-y-2 text-sm text-red-600">
+              <p v-if="validaciones.noEsEntero1 || validaciones.noEsEntero2">
+                Los resultados deben ser números enteros
+              </p>
+              <p v-if="validaciones.excede300">
+                Los resultados no pueden ser mayores a 300
+              </p>
+              <p v-if="validaciones.esNegativo">
+                Los resultados no pueden ser negativos
+              </p>
+              <p v-if="validaciones.sonIguales">
+                Los resultados no pueden ser iguales
               </p>
             </div>
 
@@ -323,7 +349,7 @@ onMounted(loadMesa)
               </button>
               <button
                 type="submit"
-                :disabled="validaciones.excede300 || validaciones.esNegativo || validaciones.sonIguales || validaciones.sumaInvalida"
+                :disabled="validaciones.hayErrores()"
                 class="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Guardar

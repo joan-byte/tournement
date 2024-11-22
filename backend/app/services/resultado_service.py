@@ -47,14 +47,14 @@ class ResultadoService:
                 id_pareja=resultado.pareja1.id,
                 RP=resultado.pareja1.RP,
                 PG=resultado.pareja1.PG,
-                PP=resultado.pareja1.PP,  # Este PP ya viene con el signo correcto
+                PP=resultado.pareja1.PP,
                 GB=resultado.pareja1.GB
             )
             self.db.add(db_resultado1)
             
+            # Crear resultado para pareja 2 solo si existe
             db_resultado2 = None
-            # Crear resultado para pareja 2 si existe
-            if resultado.pareja2:
+            if hasattr(resultado, 'pareja2') and resultado.pareja2:
                 db_resultado2 = Resultado(
                     campeonato_id=resultado.campeonato_id,
                     partida=resultado.partida,
@@ -62,28 +62,25 @@ class ResultadoService:
                     id_pareja=resultado.pareja2.id,
                     RP=resultado.pareja2.RP,
                     PG=resultado.pareja2.PG,
-                    PP=resultado.pareja2.PP,  # Este PP ya viene con el signo correcto
+                    PP=resultado.pareja2.PP,
                     GB=resultado.pareja2.GB
                 )
                 self.db.add(db_resultado2)
             
-            try:
-                self.db.commit()
-                self.db.refresh(db_resultado1)
-                if db_resultado2:
-                    self.db.refresh(db_resultado2)
-                
-                return ResultadoResponse(
-                    pareja1=db_resultado1,
-                    pareja2=db_resultado2
-                )
-            except Exception as e:
-                self.db.rollback()
-                raise HTTPException(status_code=500, detail=str(e))
-
+            self.db.commit()
+            
+            return ResultadoResponse(
+                pareja1=db_resultado1,
+                pareja2=db_resultado2
+            )
+            
         except Exception as e:
-            logger.error(f"Error al crear resultado: {str(e)}")
-            raise HTTPException(status_code=500, detail=str(e))
+            self.db.rollback()
+            print(f"Error en create_resultado: {str(e)}")
+            raise HTTPException(
+                status_code=500,
+                detail=f"Error al crear resultado: {str(e)}"
+            )
 
     def get_resultados(
         self,
