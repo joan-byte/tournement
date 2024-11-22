@@ -2,6 +2,27 @@
 from pydantic import BaseModel
 from typing import Optional
 
+class ResultadoPareja(BaseModel):
+    id: int
+    RP: int
+    PG: int
+    PP: int
+    GB: str
+
+class ResultadoCreate(BaseModel):
+    mesa_id: int
+    campeonato_id: int
+    partida: int
+    pareja1: ResultadoPareja
+    pareja2: Optional[ResultadoPareja] = None
+
+class ResultadoResponse(BaseModel):
+    pareja1: ResultadoPareja
+    pareja2: Optional[ResultadoPareja] = None
+
+    class Config:
+        from_attributes = True
+
 class RankingResultado(BaseModel):
     """
     Esquema para representar el resultado de una pareja en el ranking.

@@ -76,10 +76,9 @@ class ResultadoService:
             
         except Exception as e:
             self.db.rollback()
-            print(f"Error en create_resultado: {str(e)}")
             raise HTTPException(
                 status_code=500,
-                detail=f"Error al crear resultado: {str(e)}"
+                detail="Error al crear resultado"
             )
 
     def get_resultados(
@@ -139,11 +138,10 @@ class ResultadoService:
             # Consulta principal
             resultados = self.db.query(
                 Resultado.id_pareja,
-                Pareja.nombre.label('nombre_pareja'),
+                Pareja.nombre,
                 Pareja.club,
                 Pareja.numero,
                 func.sum(Resultado.PG).label('PG'),
-                # Obtener el PP de la última partida
                 func.first_value(Resultado.PP).over(
                     partition_by=Resultado.id_pareja,
                     order_by=Resultado.partida.desc()
@@ -173,11 +171,11 @@ class ResultadoService:
             for r in resultados:
                 ranking.append({
                     'pareja_id': r.id_pareja,
-                    'nombre_pareja': r.nombre_pareja,
+                    'nombre': r.nombre,
                     'club': r.club,
                     'numero': r.numero,
                     'PG': r.PG or 0,
-                    'PP': r.PP,  # PP de la última partida
+                    'PP': r.PP,
                     'GB': r.GB,
                     'ultima_partida': r.ultima_partida
                 })
@@ -186,15 +184,17 @@ class ResultadoService:
             return sorted(
                 ranking,
                 key=lambda x: (
-                    x['GB'],                # 1. GB ascendente (A antes que B)
-                    -(x['PG'] or 0),        # 2. Suma de PG descendente
-                    -(x['PP'] or 0)         # 3. PP descendente
+                    x['GB'],
+                    -(x['PG'] or 0),
+                    -(x['PP'] or 0)
                 )
             )
 
         except Exception as e:
-            logger.error(f"Error al obtener ranking: {str(e)}")
-            raise
+            raise HTTPException(
+                status_code=500,
+                detail="Error al obtener ranking"
+            )
 
     def actualizar_gb(
         self,

@@ -8,8 +8,9 @@ interface BaseResultado {
   PG: number
   PP: number
   RP: number
-  nombre_pareja?: string
+  nombre: string
   club?: string
+  numero: number
 }
 
 interface RankingResultado extends BaseResultado {
@@ -81,21 +82,14 @@ export const useResultadoStore = defineStore('resultado', {
     async fetchResultados(campeonatoId: number): Promise<RankingResultado[]> {
       try {
         const response = await axios.get(`/api/resultados/ranking/${campeonatoId}`)
-        console.log('Datos crudos del servidor:', response.data)
         
-        const resultados = (response.data as BaseResultado[]).map(resultado => {
-          const resultadoMapeado = {
-            ...resultado,
-            PP: resultado.PP !== null ? Number(resultado.PP) : 0,
-            PG: resultado.PG !== null ? Number(resultado.PG) : 0
-          }
-          console.log('Resultado mapeado:', {
-            pareja_id: resultado.pareja_id,
-            PP_original: resultado.PP,
-            PP_convertido: resultadoMapeado.PP
-          })
-          return resultadoMapeado
-        })
+        const resultados = (response.data as BaseResultado[]).map(resultado => ({
+          ...resultado,
+          PP: resultado.PP !== null ? Number(resultado.PP) : 0,
+          PG: resultado.PG !== null ? Number(resultado.PG) : 0,
+          nombre: resultado.nombre || '',
+          numero: resultado.numero || 0
+        }))
 
         const parejasTotales = resultados.reduce((acc: ResultadoAcumulado, curr: BaseResultado) => {
           if (!acc[curr.pareja_id]) {
@@ -108,14 +102,7 @@ export const useResultadoStore = defineStore('resultado', {
           }
 
           acc[curr.pareja_id].PG_total += curr.PG
-          const PP_previo = acc[curr.pareja_id].PP_total
           acc[curr.pareja_id].PP_total = Number(acc[curr.pareja_id].PP_total) + Number(curr.PP)
-          
-          console.log('Acumulación PP para pareja', curr.pareja_id, {
-            PP_previo,
-            PP_nuevo: curr.PP,
-            PP_total_final: acc[curr.pareja_id].PP_total
-          })
 
           return acc
         }, {} as ResultadoAcumulado)
@@ -130,7 +117,9 @@ export const useResultadoStore = defineStore('resultado', {
           ...resultado,
           PP: resultado.PP_total,
           PG: resultado.PG_total,
-          posicion: index + 1
+          posicion: index + 1,
+          nombre: resultado.nombre,
+          numero: resultado.numero
         }))
 
       } catch (error) {
