@@ -214,7 +214,7 @@ const loadParejas = async () => {
       // Verificar si hay resultados en la base de datos
       hayResultados.value = resultados && resultados.length > 0 && resultados.some(r => {
         // Considerar que hay resultados solo si hay valores diferentes a 0
-        return r.PG !== 0 || r.PP !== 0 || r.RP !== 0
+        return r.PG !== 0 || r.PP !== 0
       })
     }
   } catch (e) {
