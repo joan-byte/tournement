@@ -38,47 +38,51 @@ class ResultadoService:
             Crea resultados para ambas parejas si es una mesa completa,
             o solo para pareja1 si es mesa libre
         """
-        # Crear resultado para pareja 1
-        db_resultado1 = Resultado(
-            campeonato_id=resultado.campeonato_id,
-            P=resultado.pareja1.P,
-            M=resultado.pareja1.M,
-            id_pareja=resultado.pareja1.id_pareja,
-            RP=resultado.pareja1.RP,
-            PG=resultado.pareja1.PG,
-            PP=resultado.pareja1.PP,
-            GB=resultado.pareja1.GB
-        )
-        self.db.add(db_resultado1)
-        
-        db_resultado2 = None
-        # Crear resultado para pareja 2 si existe
-        if resultado.pareja2:
-            db_resultado2 = Resultado(
-                campeonato_id=resultado.campeonato_id,
-                P=resultado.pareja2.P,
-                M=resultado.pareja2.M,
-                id_pareja=resultado.pareja2.id_pareja,
-                RP=resultado.pareja2.RP,
-                PG=resultado.pareja2.PG,
-                PP=resultado.pareja2.PP,
-                GB=resultado.pareja2.GB
-            )
-            self.db.add(db_resultado2)
-        
         try:
-            # Confirmar transacción y refrescar objetos
-            self.db.commit()
-            self.db.refresh(db_resultado1)
-            if db_resultado2:
-                self.db.refresh(db_resultado2)
-            
-            return ResultadoResponse(
-                pareja1=db_resultado1,
-                pareja2=db_resultado2
+            # Crear resultado para pareja 1
+            db_resultado1 = Resultado(
+                campeonato_id=resultado.campeonato_id,
+                partida=resultado.partida,
+                mesa_id=resultado.mesa_id,
+                id_pareja=resultado.pareja1.id,
+                RP=resultado.pareja1.RP,
+                PG=resultado.pareja1.PG,
+                PP=resultado.pareja1.PP,  # Este PP ya viene con el signo correcto
+                GB=resultado.pareja1.GB
             )
+            self.db.add(db_resultado1)
+            
+            db_resultado2 = None
+            # Crear resultado para pareja 2 si existe
+            if resultado.pareja2:
+                db_resultado2 = Resultado(
+                    campeonato_id=resultado.campeonato_id,
+                    partida=resultado.partida,
+                    mesa_id=resultado.mesa_id,
+                    id_pareja=resultado.pareja2.id,
+                    RP=resultado.pareja2.RP,
+                    PG=resultado.pareja2.PG,
+                    PP=resultado.pareja2.PP,  # Este PP ya viene con el signo correcto
+                    GB=resultado.pareja2.GB
+                )
+                self.db.add(db_resultado2)
+            
+            try:
+                self.db.commit()
+                self.db.refresh(db_resultado1)
+                if db_resultado2:
+                    self.db.refresh(db_resultado2)
+                
+                return ResultadoResponse(
+                    pareja1=db_resultado1,
+                    pareja2=db_resultado2
+                )
+            except Exception as e:
+                self.db.rollback()
+                raise HTTPException(status_code=500, detail=str(e))
+
         except Exception as e:
-            self.db.rollback()
+            logger.error(f"Error al crear resultado: {str(e)}")
             raise HTTPException(status_code=500, detail=str(e))
 
     def get_resultados(
@@ -122,48 +126,78 @@ class ResultadoService:
     def obtener_ranking(self, campeonato_id: int) -> List[Dict]:
         """
         Obtiene el ranking actual del campeonato.
-        
-        Args:
-            campeonato_id: ID del campeonato
-            
-        Returns:
-            Lista de diccionarios con estadísticas de cada pareja,
-            ordenada por PG (descendente) y PP (descendente)
-            
-        Note:
-            Incluye nombre de la pareja, club, PG, PP y GB
         """
-        # Consulta para obtener resultados agrupados por pareja
-        resultados = self.db.query(
-            Resultado.id_pareja,
-            Pareja.nombre.label('nombre_pareja'),
-            Pareja.club,
-            func.sum(Resultado.PG).label('total_PG'),
-            func.sum(Resultado.PP).label('total_PP'),
-            Resultado.GB
-        ).join(
-            Pareja, Resultado.id_pareja == Pareja.id
-        ).filter(
-            Resultado.campeonato_id == campeonato_id
-        ).group_by(
-            Resultado.id_pareja,
-            Pareja.nombre,
-            Pareja.club,
-            Resultado.GB
-        ).all()
+        try:
+            # Subconsulta para obtener la última partida de cada pareja
+            ultima_partida_subquery = (
+                self.db.query(
+                    Resultado.id_pareja,
+                    func.max(Resultado.partida).label('ultima_partida')
+                )
+                .filter(Resultado.campeonato_id == campeonato_id)
+                .group_by(Resultado.id_pareja)
+                .subquery()
+            )
 
-        # Convertir resultados a formato de respuesta
-        ranking = [{
-            'pareja_id': r.id_pareja,
-            'nombre_pareja': r.nombre_pareja,
-            'club': r.club,
-            'PG': r.total_PG,
-            'PP': r.total_PP,
-            'GB': r.GB
-        } for r in resultados]
-        
-        # Ordenar por PG y PP (ambos descendentes)
-        return sorted(ranking, key=lambda x: (-x['PG'], x['PP']))
+            # Consulta principal
+            resultados = self.db.query(
+                Resultado.id_pareja,
+                Pareja.nombre.label('nombre_pareja'),
+                Pareja.club,
+                Pareja.numero,
+                func.sum(Resultado.PG).label('PG'),
+                # Obtener el PP de la última partida
+                func.first_value(Resultado.PP).over(
+                    partition_by=Resultado.id_pareja,
+                    order_by=Resultado.partida.desc()
+                ).label('PP'),
+                Resultado.GB,
+                ultima_partida_subquery.c.ultima_partida
+            ).join(
+                Pareja, Resultado.id_pareja == Pareja.id
+            ).join(
+                ultima_partida_subquery,
+                Resultado.id_pareja == ultima_partida_subquery.c.id_pareja
+            ).filter(
+                Resultado.campeonato_id == campeonato_id
+            ).group_by(
+                Resultado.id_pareja,
+                Pareja.nombre,
+                Pareja.club,
+                Pareja.numero,
+                Resultado.PP,
+                Resultado.GB,
+                ultima_partida_subquery.c.ultima_partida,
+                Resultado.partida
+            ).all()
+
+            # Convertir resultados a formato de respuesta
+            ranking = []
+            for r in resultados:
+                ranking.append({
+                    'pareja_id': r.id_pareja,
+                    'nombre_pareja': r.nombre_pareja,
+                    'club': r.club,
+                    'numero': r.numero,
+                    'PG': r.PG or 0,
+                    'PP': r.PP,  # PP de la última partida
+                    'GB': r.GB,
+                    'ultima_partida': r.ultima_partida
+                })
+
+            # Ordenar según los criterios especificados
+            return sorted(
+                ranking,
+                key=lambda x: (
+                    x['GB'],                # 1. GB ascendente (A antes que B)
+                    -(x['PG'] or 0),        # 2. Suma de PG descendente
+                    -(x['PP'] or 0)         # 3. PP descendente
+                )
+            )
+
+        except Exception as e:
+            logger.error(f"Error al obtener ranking: {str(e)}")
+            raise
 
     def actualizar_gb(
         self,

@@ -55,7 +55,7 @@ def get_ranking(campeonato_id: int, db: Session = Depends(get_db)):
             if resultados_pareja:  # Solo incluir parejas con resultados reales
                 # Calcular estadísticas acumuladas
                 total_pg = sum(1 for r in resultados_pareja if r.PG == 1)
-                total_pp = sum(r.PP for r in resultados_pareja if r.PP > 0)
+                total_pp = sum(r.PP for r in resultados_pareja)
                 ultima_partida = max([r.partida for r in resultados_pareja])
 
                 # Crear item del ranking con todos los datos necesarios
@@ -80,6 +80,8 @@ def get_ranking(campeonato_id: int, db: Session = Depends(get_db)):
         for idx, item in enumerate(ranking, 1):
             item.posicion = idx
 
+        # Agregar este log antes del return
+        print("Respuesta del backend:", ranking)
         return ranking
 
     except Exception as e:

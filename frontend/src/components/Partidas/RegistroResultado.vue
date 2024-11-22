@@ -100,27 +100,24 @@ const loadMesa = async () => {
     const mesaData = await mesaStore.getMesa(mesaId)
     mesa.value = mesaData
 
-    // Manejo especial para mesa con una sola pareja (descansa)
     if (mesaData && mesaData.pareja1 && !mesaData.pareja2) {
       formData.value = {
         pareja1: {
-          RP: 150,  // La pareja que juega recibe 150 puntos
-          PG: 1,    // Gana la partida
-          PP: 150,  // Puntos de partida igual a RP
+          RP: 150,
+          PG: 1,
+          PP: 150,
           GB: 'A'
         },
         pareja2: {
-          RP: 0,    // La pareja que no existe recibe 0
-          PG: 0,    // No gana la partida
-          PP: 0,    // No recibe puntos
+          RP: 0,
+          PG: 0,
+          PP: 0,
           GB: 'A'
         }
       }
-      // Guardar automáticamente el resultado
       await handleSubmit()
     }
 
-    // Carga de resultados previos si existen
     const resultado = await resultadoStore.getResultadoMesa(
       mesaId, 
       campeonatoActual.value?.partida_actual || 0
@@ -147,7 +144,6 @@ const loadMesa = async () => {
       }
     }
   } catch (e) {
-    console.error('Error al cargar mesa:', e)
     error.value = 'Error al cargar la mesa'
   } finally {
     isLoading.value = false
@@ -164,64 +160,31 @@ const handleSubmit = async () => {
     if (!mesa.value || !campeonatoActual.value) return
 
     const partidaActual = campeonatoActual.value.partida_actual
-    if (!partidaActual) {
-      error.value = 'No se pudo determinar la partida actual'
-      return
-    }
 
-    const rp1 = Number(formData.value.pareja1.RP)
-    const rp2 = Number(formData.value.pareja2.RP)
-
-    // Validaciones...
-    if (!Number.isInteger(rp1) || !Number.isInteger(rp2)) {
-      error.value = 'Los resultados no pueden contener decimales'
-      return
-    }
-
-    if (validaciones.value.excede300 || validaciones.value.esNegativo || 
-        validaciones.value.sonIguales || validaciones.value.sumaInvalida) {
-      error.value = 'Hay errores en los resultados'
-      return
-    }
-
-    // Calcular valores
-    const pg1 = rp1 > rp2 ? 1 : 0
-    const pg2 = rp2 > rp1 ? 1 : 0
-    const pp1 = rp1 - rp2
-    const pp2 = rp2 - rp1
-
-    // Nueva estructura para el backend
     const resultado = {
       mesa_id: mesa.value.id,
-      campeonato_id: mesa.value.campeonato_id,
+      campeonato_id: campeonatoActual.value.id,
       partida: partidaActual,
       pareja1: {
-        id_pareja: mesa.value.pareja1_id,
-        RP: rp1,
-        PG: pg1,
-        PP: pp1,
+        id: mesa.value.pareja1.id,
+        RP: Number(formData.value.pareja1.RP),
+        PG: calculosPareja1.value.PG,
+        PP: calculosPareja1.value.PP,
         GB: formData.value.pareja1.GB
       },
       pareja2: {
-        id_pareja: mesa.value.pareja2_id,
-        RP: rp2,
-        PG: pg2,
-        PP: pp2,
+        id: mesa.value.pareja2.id,
+        RP: Number(formData.value.pareja2.RP),
+        PG: calculosPareja2.value.PG,
+        PP: calculosPareja2.value.PP,
         GB: formData.value.pareja2.GB
       }
     }
 
-    console.log('Enviando resultado:', JSON.stringify(resultado, null, 2))
     await resultadoStore.saveResultado(resultado)
     router.push('/mesas/resultados')
-  } catch (e: any) {
-    console.error('Error al guardar resultado:', e)
-    if (e.response?.data) {
-      console.error('Respuesta del servidor:', e.response.data)
-      error.value = `Error al guardar el resultado: ${e.response.data.detail || JSON.stringify(e.response.data)}`
-    } else {
-      error.value = `Error al guardar el resultado: ${e.message}`
-    }
+  } catch (e) {
+    error.value = 'Error al guardar el resultado'
   }
 }
 

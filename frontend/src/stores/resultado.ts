@@ -1,6 +1,26 @@
 import { defineStore } from 'pinia'
 import axios from 'axios'
-import type { Resultado } from '@/types/resultado'
+
+// Interfaces necesarias
+interface BaseResultado {
+  pareja_id: number
+  GB: string
+  PG: number
+  PP: number
+  RP: number
+  nombre_pareja?: string
+  club?: string
+}
+
+interface RankingResultado extends BaseResultado {
+  PG_total: number
+  PP_total: number
+  posicion: number
+}
+
+interface ResultadoAcumulado {
+  [key: number]: RankingResultado
+}
 
 /**
  * Store de Pinia para gestionar los resultados de las partidas del campeonato
@@ -13,7 +33,7 @@ import type { Resultado } from '@/types/resultado'
 export const useResultadoStore = defineStore('resultado', {
   // Estado inicial del store que mantiene los resultados en memoria
   state: () => ({
-    resultados: [] // Array que almacena temporalmente los resultados de las partidas
+    resultados: [] as BaseResultado[] // Array que almacena temporalmente los resultados de las partidas
   }),
 
   actions: {
@@ -25,15 +45,9 @@ export const useResultadoStore = defineStore('resultado', {
      */
     async saveResultado(resultado: any) {
       try {
-        console.log('Datos a enviar al servidor:', resultado)
         const response = await axios.post('/api/resultados/', resultado)
-        console.log('Respuesta del servidor:', response.data)
         return response.data
       } catch (error: any) {
-        console.error('Error guardando resultado:', error)
-        if (error.response) {
-          console.error('Detalles del error:', error.response.data)
-        }
         throw error
       }
     },
@@ -64,12 +78,62 @@ export const useResultadoStore = defineStore('resultado', {
      * @returns {Promise<Resultado[]>} Array con los resultados ordenados por ranking
      * @throws {Error} Si hay un error al obtener los resultados del servidor
      */
-    async fetchResultados(campeonatoId: number): Promise<Resultado[]> {
+    async fetchResultados(campeonatoId: number): Promise<RankingResultado[]> {
       try {
         const response = await axios.get(`/api/resultados/ranking/${campeonatoId}`)
-        return response.data
+        console.log('Datos crudos del servidor:', response.data)
+        
+        const resultados = (response.data as BaseResultado[]).map(resultado => {
+          const resultadoMapeado = {
+            ...resultado,
+            PP: resultado.PP !== null ? Number(resultado.PP) : 0,
+            PG: resultado.PG !== null ? Number(resultado.PG) : 0
+          }
+          console.log('Resultado mapeado:', {
+            pareja_id: resultado.pareja_id,
+            PP_original: resultado.PP,
+            PP_convertido: resultadoMapeado.PP
+          })
+          return resultadoMapeado
+        })
+
+        const parejasTotales = resultados.reduce((acc: ResultadoAcumulado, curr: BaseResultado) => {
+          if (!acc[curr.pareja_id]) {
+            acc[curr.pareja_id] = {
+              ...curr,
+              PG_total: 0,
+              PP_total: 0,
+              posicion: 0
+            }
+          }
+
+          acc[curr.pareja_id].PG_total += curr.PG
+          const PP_previo = acc[curr.pareja_id].PP_total
+          acc[curr.pareja_id].PP_total = Number(acc[curr.pareja_id].PP_total) + Number(curr.PP)
+          
+          console.log('Acumulación PP para pareja', curr.pareja_id, {
+            PP_previo,
+            PP_nuevo: curr.PP,
+            PP_total_final: acc[curr.pareja_id].PP_total
+          })
+
+          return acc
+        }, {} as ResultadoAcumulado)
+
+        const resultadosOrdenados = Object.values(parejasTotales).sort((a, b) => {
+          if (a.GB !== b.GB) return a.GB.localeCompare(b.GB)
+          if (a.PG_total !== b.PG_total) return b.PG_total - a.PG_total
+          return b.PP_total - a.PP_total
+        })
+
+        return resultadosOrdenados.map((resultado: RankingResultado, index: number) => ({
+          ...resultado,
+          PP: resultado.PP_total,
+          PG: resultado.PG_total,
+          posicion: index + 1
+        }))
+
       } catch (error) {
-        console.error('Error obteniendo resultados:', error)
         throw error
       }
     },
@@ -85,7 +149,6 @@ export const useResultadoStore = defineStore('resultado', {
         const response = await axios.get(`/api/resultados/campeonato/${campeonatoId}`)
         return response.data
       } catch (error) {
-        console.error('Error obteniendo resultados del campeonato:', error)
         throw error
       }
     }
