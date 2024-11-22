@@ -12,7 +12,8 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useMesaStore } from '@/stores/mesa'
 import { useResultadoStore } from '@/stores/resultado'
-import type { Mesa } from '@/types'
+import { useCampeonatoStore } from '@/stores/campeonato'
+import type { Mesa, Campeonato } from '@/types'
 import type { MesaStore } from '@/types/store'
 
 // Inicialización de stores y router
@@ -20,11 +21,15 @@ const route = useRoute()
 const router = useRouter()
 const mesaStore = useMesaStore() as MesaStore
 const resultadoStore = useResultadoStore()
+const campeonatoStore = useCampeonatoStore()
 
 // Estado reactivo del componente
 const mesa = ref<Mesa | null>(null)
 const isLoading = ref(true)
 const error = ref('')
+
+// Agregar esta computed property
+const campeonatoActual = computed(() => campeonatoStore.getCurrentCampeonato())
 
 /**
  * @description Estructura inicial del formulario de resultados
@@ -45,6 +50,42 @@ const formData = ref({
     PG: 0,
     PP: 0,
     GB: 'A'
+  }
+})
+
+// Agregar computed properties para los cálculos en tiempo real
+const calculosPareja1 = computed(() => {
+  const rp1 = Number(formData.value.pareja1.RP)
+  const rp2 = Number(formData.value.pareja2.RP)
+  const diferencia = rp1 - rp2
+  return {
+    PG: rp1 > rp2 ? 1 : 0,
+    PP: diferencia // Positivo si gana, negativo si pierde
+  }
+})
+
+const calculosPareja2 = computed(() => {
+  const rp1 = Number(formData.value.pareja1.RP)
+  const rp2 = Number(formData.value.pareja2.RP)
+  const diferencia = rp2 - rp1
+  return {
+    PG: rp2 > rp1 ? 1 : 0,
+    PP: diferencia // Positivo si gana, negativo si pierde
+  }
+})
+
+// Computed para validaciones en tiempo real
+const validaciones = computed(() => {
+  const rp1 = Number(formData.value.pareja1.RP)
+  const rp2 = Number(formData.value.pareja2.RP)
+  const sumaTotal = rp1 + rp2
+  
+  return {
+    excede300: rp1 > 300 || rp2 > 300,
+    esNegativo: rp1 < 0 || rp2 < 0,
+    sonIguales: rp1 === rp2 && (rp1 !== 0 || rp2 !== 0),
+    sumaInvalida: (sumaTotal < 1 || sumaTotal > 599) && (rp1 !== 0 || rp2 !== 0),
+    sumaActual: sumaTotal
   }
 })
 
@@ -80,7 +121,10 @@ const loadMesa = async () => {
     }
 
     // Carga de resultados previos si existen
-    const resultado = await resultadoStore.getResultadoMesa(mesaId, mesaData.campeonato_id)
+    const resultado = await resultadoStore.getResultadoMesa(
+      mesaId, 
+      campeonatoActual.value?.partida_actual || 0
+    )
     if (resultado) {
       formData.value = {
         pareja1: {
@@ -117,30 +161,67 @@ const loadMesa = async () => {
  */
 const handleSubmit = async () => {
   try {
-    if (!mesa.value) return
+    if (!mesa.value || !campeonatoActual.value) return
 
-    const resultado = {
-      pareja1: {
-        campeonato_id: mesa.value.campeonato_id,
-        partida_actual: mesa.value.campeonato_id,
-        mesa_id: mesa.value.id,
-        id_pareja: mesa.value.pareja1_id,
-        ...formData.value.pareja1
-      },
-      pareja2: mesa.value.pareja2_id ? {
-        campeonato_id: mesa.value.campeonato_id,
-        partida_actual: mesa.value.campeonato_id,
-        mesa_id: mesa.value.id,
-        id_pareja: mesa.value.pareja2_id,
-        ...formData.value.pareja2
-      } : undefined
+    const partidaActual = campeonatoActual.value.partida_actual
+    if (!partidaActual) {
+      error.value = 'No se pudo determinar la partida actual'
+      return
     }
 
+    const rp1 = Number(formData.value.pareja1.RP)
+    const rp2 = Number(formData.value.pareja2.RP)
+
+    // Validaciones...
+    if (!Number.isInteger(rp1) || !Number.isInteger(rp2)) {
+      error.value = 'Los resultados no pueden contener decimales'
+      return
+    }
+
+    if (validaciones.value.excede300 || validaciones.value.esNegativo || 
+        validaciones.value.sonIguales || validaciones.value.sumaInvalida) {
+      error.value = 'Hay errores en los resultados'
+      return
+    }
+
+    // Calcular valores
+    const pg1 = rp1 > rp2 ? 1 : 0
+    const pg2 = rp2 > rp1 ? 1 : 0
+    const pp1 = rp1 - rp2
+    const pp2 = rp2 - rp1
+
+    // Nueva estructura para el backend
+    const resultado = {
+      mesa_id: mesa.value.id,
+      campeonato_id: mesa.value.campeonato_id,
+      partida: partidaActual,
+      pareja1: {
+        id_pareja: mesa.value.pareja1_id,
+        RP: rp1,
+        PG: pg1,
+        PP: pp1,
+        GB: formData.value.pareja1.GB
+      },
+      pareja2: {
+        id_pareja: mesa.value.pareja2_id,
+        RP: rp2,
+        PG: pg2,
+        PP: pp2,
+        GB: formData.value.pareja2.GB
+      }
+    }
+
+    console.log('Enviando resultado:', JSON.stringify(resultado, null, 2))
     await resultadoStore.saveResultado(resultado)
     router.push('/mesas/resultados')
-  } catch (e) {
+  } catch (e: any) {
     console.error('Error al guardar resultado:', e)
-    error.value = 'Error al guardar el resultado'
+    if (e.response?.data) {
+      console.error('Respuesta del servidor:', e.response.data)
+      error.value = `Error al guardar el resultado: ${e.response.data.detail || JSON.stringify(e.response.data)}`
+    } else {
+      error.value = `Error al guardar el resultado: ${e.message}`
+    }
   }
 }
 
@@ -150,9 +231,7 @@ onMounted(loadMesa)
 
 <!-- Template con formulario de registro de resultados -->
 <template>
-  <!-- Contenedor principal -->
   <div class="container mx-auto p-4">
-    <!-- Tarjeta principal con información y formulario -->
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
       <!-- Cabecera con información de la mesa -->
       <div class="px-4 py-5 sm:px-6">
@@ -186,120 +265,91 @@ onMounted(loadMesa)
               </div>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
-                  <label for="rp1" class="block text-sm font-medium text-gray-700">
+                  <label for="pareja1-rp" class="block text-sm font-medium text-gray-700">
                     Resultado Partida (RP)
                   </label>
                   <input
                     type="number"
-                    id="rp1"
+                    id="pareja1-rp"
                     v-model="formData.pareja1.RP"
                     required
+                    min="0"
+                    max="300"
+                    step="1"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label for="pg1" class="block text-sm font-medium text-gray-700">
+                  <span class="block text-sm font-medium text-gray-700">
                     Partidas Ganadas (PG)
-                  </label>
-                  <input
-                    type="number"
-                    id="pg1"
-                    v-model="formData.pareja1.PG"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
+                  </span>
+                  <div class="mt-2 text-sm text-gray-900">
+                    {{ calculosPareja1.PG }}
+                  </div>
                 </div>
                 <div>
-                  <label for="pp1" class="block text-sm font-medium text-gray-700">
+                  <span class="block text-sm font-medium text-gray-700">
                     Puntos Partida (PP)
-                  </label>
-                  <input
-                    type="number"
-                    id="pp1"
-                    v-model="formData.pareja1.PP"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
-                </div>
-                <div>
-                  <label for="gb1" class="block text-sm font-medium text-gray-700">
-                    Grupo (GB)
-                  </label>
-                  <select
-                    id="gb1"
-                    v-model="formData.pareja1.GB"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                  </select>
+                  </span>
+                  <div class="mt-2 text-sm text-gray-900">
+                    {{ calculosPareja1.PP }}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <!-- Pareja 2 (si existe) -->
-            <div v-if="mesa?.pareja2" class="bg-gray-50 p-4 rounded-lg">
+            <!-- Pareja 2 -->
+            <div class="bg-gray-50 p-4 rounded-lg">
               <div class="mb-4">
                 <h4 class="text-lg font-medium text-gray-900">
-                  Pareja {{ mesa.pareja2.numero }}
+                  Pareja {{ mesa?.pareja2?.numero }}
                 </h4>
-                <p class="text-sm text-gray-500">{{ mesa.pareja2.nombre }}</p>
+                <p class="text-sm text-gray-500">{{ mesa?.pareja2?.nombre }}</p>
               </div>
               <div class="grid grid-cols-1 gap-4 sm:grid-cols-4">
                 <div>
-                  <label for="rp2" class="block text-sm font-medium text-gray-700">
+                  <label for="pareja2-rp" class="block text-sm font-medium text-gray-700">
                     Resultado Partida (RP)
                   </label>
                   <input
                     type="number"
-                    id="rp2"
+                    id="pareja2-rp"
                     v-model="formData.pareja2.RP"
                     required
+                    min="0"
+                    max="300"
+                    step="1"
                     class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                   />
                 </div>
                 <div>
-                  <label for="pg2" class="block text-sm font-medium text-gray-700">
+                  <span class="block text-sm font-medium text-gray-700">
                     Partidas Ganadas (PG)
-                  </label>
-                  <input
-                    type="number"
-                    id="pg2"
-                    v-model="formData.pareja2.PG"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
+                  </span>
+                  <div class="mt-2 text-sm text-gray-900">
+                    {{ calculosPareja2.PG }}
+                  </div>
                 </div>
                 <div>
-                  <label for="pp2" class="block text-sm font-medium text-gray-700">
+                  <span class="block text-sm font-medium text-gray-700">
                     Puntos Partida (PP)
-                  </label>
-                  <input
-                    type="number"
-                    id="pp2"
-                    v-model="formData.pareja2.PP"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  />
-                </div>
-                <div>
-                  <label for="gb2" class="block text-sm font-medium text-gray-700">
-                    Grupo (GB)
-                  </label>
-                  <select
-                    id="gb2"
-                    v-model="formData.pareja2.GB"
-                    required
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                  >
-                    <option value="A">A</option>
-                    <option value="B">B</option>
-                  </select>
+                  </span>
+                  <div class="mt-2 text-sm text-gray-900">
+                    {{ calculosPareja2.PP }}
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- Validaciones generales -->
+            <div v-if="formData.pareja1.RP && formData.pareja2.RP" class="text-sm text-red-600">
+              <p v-if="validaciones.sonIguales">Los resultados no pueden ser iguales</p>
+              <p v-if="validaciones.sumaInvalida">
+                La suma debe estar entre 1 y 599 (actual: {{ validaciones.sumaActual }})
+              </p>
+            </div>
+
+            <!-- Botones de acción -->
             <div class="flex justify-end space-x-3">
               <button
                 type="button"
@@ -310,7 +360,8 @@ onMounted(loadMesa)
               </button>
               <button
                 type="submit"
-                class="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                :disabled="validaciones.excede300 || validaciones.esNegativo || validaciones.sonIguales || validaciones.sumaInvalida"
+                class="inline-flex justify-center rounded-md border border-transparent bg-primary-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Guardar
               </button>

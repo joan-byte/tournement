@@ -25,10 +25,15 @@ export const useResultadoStore = defineStore('resultado', {
      */
     async saveResultado(resultado: any) {
       try {
-        const response = await axios.post('/api/resultados', resultado)
+        console.log('Datos a enviar al servidor:', resultado)
+        const response = await axios.post('/api/resultados/', resultado)
+        console.log('Respuesta del servidor:', response.data)
         return response.data
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error guardando resultado:', error)
+        if (error.response) {
+          console.error('Detalles del error:', error.response.data)
+        }
         throw error
       }
     },
