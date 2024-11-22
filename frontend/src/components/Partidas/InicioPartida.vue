@@ -212,12 +212,21 @@ const iniciarPartida = async () => {
   try {
     if (!campeonatoActual.value) return
     
+    const partidaActual = campeonatoActual.value.partida_actual
+
+    // Asignar mesas según corresponda
+    await mesaStore.asignarMesas(
+      campeonatoActual.value.id,
+      partidaActual
+    )
+
     if (esPrimeraPartida.value) {
-      await mesaStore.sortearMesas(campeonatoActual.value.id)
+      // Si es la primera partida, ya se hizo el sorteo
       mesasAsignadas.value = true
     } else {
+      // Para las siguientes partidas, incrementar el contador
       await campeonatoStore.updateCampeonato(campeonatoActual.value.id, {
-        partida_actual: campeonatoActual.value.partida_actual + 1
+        partida_actual: partidaActual + 1
       })
       router.push('/partidas/registro')
     }
